@@ -318,6 +318,8 @@ def render_sidebar() -> str | None:
         if st.button("🗑 Reset Session", use_container_width=True):
             reset_session()
 
+
+
         st.markdown("---")
         st.markdown("### ℹ About")
         st.caption(

@@ -278,6 +278,11 @@ class ExecutionAgent:
         sql_lower = sql.lower()
         for triggers, key in _CACHE_PATTERNS:
             if all(t.lower() in sql_lower for t in triggers):
+                # Extra check: if the cached rollup contains weekly metrics (grouped by week),
+                # the query must also explicitly request or filter by 'week'.
+                if key in ("weekly_sales_region", "weekly_inventory_region", "weekly_category_revenue"):
+                    if "week" not in sql_lower:
+                        continue
                 log.info("  Cache candidate detected: '%s'", key)
                 return key
         return None
