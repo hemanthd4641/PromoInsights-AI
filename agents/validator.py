@@ -231,7 +231,8 @@ class SQLValidator:
         Returns:
             Row count integer, or -1 on error.
         """
-        count_sql = f"SELECT COUNT(*) FROM ({sql}) t"
+        clean_sql = sql.strip().rstrip(";")
+        count_sql = f"SELECT COUNT(*) FROM ({clean_sql}) t"
         log.debug("  [RowCount] count SQL: %s", count_sql[:150])
         try:
             con = self._connect()
