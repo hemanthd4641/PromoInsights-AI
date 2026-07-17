@@ -240,7 +240,7 @@ def _print_result(result: Dict[str, Any]) -> None:
     print(f"QUERY: {result['query']}")
     print(f"{'=' * 60}")
 
-    print(f"\n📘 DEFINITIONS ({len(result['definitions'])} results):")
+    print(f"\n[DEFINITIONS] ({len(result['definitions'])} results):")
     for i, d in enumerate(result["definitions"], 1):
         print(f"  [{i}] Term       : {d['term']}")
         print(f"      Score      : {d['similarity_score']}")
@@ -248,7 +248,7 @@ def _print_result(result: Dict[str, Any]) -> None:
         print(f"      Formula    : {d['formula']}")
         print()
 
-    print(f"💡 FEW-SHOT EXAMPLES ({len(result['examples'])} results):")
+    print(f"[FEW-SHOT EXAMPLES] ({len(result['examples'])} results):")
     for i, ex in enumerate(result["examples"], 1):
         print(f"  [{i}] Type       : {ex['question_type']}")
         print(f"      Score      : {ex['similarity_score']}")
