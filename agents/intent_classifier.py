@@ -220,7 +220,17 @@ class IntentClassifier:
         log.info("Classifying question: %r", question)
 
         try:
-            result: Intent = self._chain.invoke({"question": question})
+            raw = self._chain.invoke({"question": question})
+            # with_structured_output may return a dict or an Intent depending
+            # on LangChain version — normalise to Intent either way.
+            if isinstance(raw, dict):
+                result: Intent = Intent(**raw)
+            elif isinstance(raw, Intent):
+                result = raw
+            else:
+                raise ValueError(
+                    f"Unexpected output type from LLM chain: {type(raw)}"
+                )
         except Exception as exc:
             log.exception("LLM call failed for question: %r", question)
             raise RuntimeError(
