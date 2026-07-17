@@ -1,0 +1,58 @@
+[
+  {
+    "id": "fs_001",
+    "type": "trend",
+    "question": "Did campaign PROMO028 improve sales in the West region?",
+    "sql": "SELECT\n    s.week,\n    SUM(s.units_sold)  AS total_units,\n    SUM(s.revenue)     AS total_revenue,\n    p.promo_name,\n    p.discount_pct\nFROM vw_weekly_sales s\nJOIN vw_promo_calendar p\n    ON s.promo_id = p.promo_id\nWHERE s.promo_id = 'PROMO028'\n  AND s.region   = 'West'\nGROUP BY s.week, p.promo_name, p.discount_pct\nORDER BY s.week;",
+    "explanation": "Trend query: aggregates weekly revenue and units for a specific promotion and region to assess whether sales increased during the campaign window."
+  },
+  {
+    "id": "fs_002",
+    "type": "ranking",
+    "question": "Which region performed best during PROMO019?",
+    "sql": "SELECT\n    s.region,\n    SUM(s.units_sold) AS total_units,\n    SUM(s.revenue)    AS total_revenue\nFROM vw_weekly_sales s\nWHERE s.promo_id = 'PROMO019'\nGROUP BY s.region\nORDER BY total_revenue DESC\nLIMIT 1;",
+    "explanation": "Ranking query: groups sales by region for a given promotion and returns the top-performing region by total revenue."
+  },
+  {
+    "id": "fs_003",
+    "type": "comparison",
+    "question": "Compare North and South region sales during PROMO021.",
+    "sql": "SELECT\n    s.region,\n    SUM(s.units_sold) AS total_units,\n    SUM(s.revenue)    AS total_revenue,\n    AVG(s.revenue)    AS avg_revenue_per_sale\nFROM vw_weekly_sales s\nWHERE s.promo_id = 'PROMO021'\n  AND s.region IN ('North', 'South')\nGROUP BY s.region\nORDER BY s.region;",
+    "explanation": "Comparison query: side-by-side aggregation of two regions during a specific promotion to highlight performance differences."
+  },
+  {
+    "id": "fs_004",
+    "type": "anomaly",
+    "question": "Were any SKUs overstocked (stock level above 8000) last week?",
+    "sql": "SELECT\n    region,\n    sku,\n    category,\n    stock_level,\n    week\nFROM vw_weekly_inventory\nWHERE stock_level > 8000\nORDER BY stock_level DESC;",
+    "explanation": "Anomaly query: identifies SKUs with abnormally high stock levels that may indicate overstock risk or poor sell-through during a campaign."
+  },
+  {
+    "id": "fs_005",
+    "type": "trend",
+    "question": "Show me weekly revenue trend for Electronics category over all weeks.",
+    "sql": "SELECT\n    week,\n    SUM(revenue)    AS total_revenue,\n    SUM(units_sold) AS total_units\nFROM vw_weekly_sales\nWHERE category = 'Electronics'\nGROUP BY week\nORDER BY week;",
+    "explanation": "Trend query: tracks revenue and unit volume for a specific product category week-by-week to identify seasonal patterns."
+  },
+  {
+    "id": "fs_006",
+    "type": "ranking",
+    "question": "Which SKU generated the highest revenue across all promotions?",
+    "sql": "SELECT\n    sku,\n    category,\n    SUM(revenue)    AS total_revenue,\n    SUM(units_sold) AS total_units\nFROM vw_weekly_sales\nGROUP BY sku, category\nORDER BY total_revenue DESC\nLIMIT 10;",
+    "explanation": "Ranking query: identifies the top revenue-generating SKUs across the entire promotion period regardless of campaign or region."
+  },
+  {
+    "id": "fs_007",
+    "type": "comparison",
+    "question": "Compare average discount percentage by category across all promotions.",
+    "sql": "SELECT\n    category,\n    COUNT(promo_id)          AS total_promos,\n    AVG(discount_pct)        AS avg_discount_pct,\n    MIN(discount_pct)        AS min_discount,\n    MAX(discount_pct)        AS max_discount\nFROM vw_promo_calendar\nGROUP BY category\nORDER BY avg_discount_pct DESC;",
+    "explanation": "Comparison query: summarises promotion discount depth by category to understand which categories receive the most aggressive markdowns."
+  },
+  {
+    "id": "fs_008",
+    "type": "anomaly",
+    "question": "Which regions had the lowest average inventory levels during active promotions?",
+    "sql": "SELECT\n    i.region,\n    i.category,\n    AVG(i.stock_level) AS avg_stock,\n    MIN(i.stock_level) AS min_stock\nFROM vw_weekly_inventory i\nJOIN vw_promo_calendar p\n    ON  i.region   = p.region\n    AND i.category = p.category\n    AND i.week BETWEEN p.start_week AND p.end_week\nGROUP BY i.region, i.category\nORDER BY avg_stock ASC\nLIMIT 10;",
+    "explanation": "Anomaly query: detects regions and categories where stock levels were critically low during active promotions — a potential stockout risk signal."
+  }
+]
