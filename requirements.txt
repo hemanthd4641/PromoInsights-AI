@@ -1,0 +1,11 @@
+duckdb
+chromadb
+groq
+langchain
+langchain-groq
+streamlit
+pandas
+faker
+python-dotenv
+sentence-transformers
+pydantic
