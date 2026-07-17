@@ -22,6 +22,8 @@ Usage:
 
 import logging
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 
@@ -38,6 +40,7 @@ from agents.query_grounding import QueryGroundingAgent
 from agents.synthesizer import CoverageFlag, ResponseSynthesizer, SynthesizedResponse
 from agents.validator import SQLValidator
 from config import LOG_LEVEL, MAX_RETRIES
+from logs.metrics_logger import QueryMetrics, get_metrics_logger
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -134,11 +137,14 @@ class PromotionAnalyticsOrchestrator:
         log.info("Orchestrator.handle() | session_id=%r", session_id)
         log.info("  Question: %r", question)
 
+        _pipeline_start = time.perf_counter()
+        _metrics_logger = get_metrics_logger()
+
         try:
             # STEP 1: Load session
             self.session_memory.create_session(session_id)
             session_data = self.session_memory.get_session(session_id)
-            
+
             # Simple carry-forward context injection
             context_prefix = ""
             if session_data.get("last_intent"):
@@ -151,10 +157,22 @@ class PromotionAnalyticsOrchestrator:
 
             # STEP 2: Intent Classification
             intent = self.intent_classifier.classify(contextualised_question)
-            
+
             # STEP 3: Confidence Check
             if intent.confidence < 0.70:
                 log.warning("  Low confidence (%.2f < 0.70) — aborting pipeline.", intent.confidence)
+                _metrics_logger.log_query_metrics(QueryMetrics(
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    question=question,
+                    topic=intent.topic,
+                    classification_confidence=intent.confidence,
+                    validation_passed=False,
+                    retry_count=0,
+                    execution_latency_ms=0.0,
+                    row_count=0,
+                    cache_hit=False,
+                    response_generated=False,
+                ))
                 return self.create_fallback_response("The request is ambiguous.")
 
             # STEP 4: Grounding
@@ -163,16 +181,16 @@ class PromotionAnalyticsOrchestrator:
             # STEP 5 & 6: Generation & Validation Loop
             sql_result = self.query_generator.generate_sql(question, grounded_intent)
             sql = sql_result.sql
-            
+
             retries = 0
             is_valid = False
             last_error = ""
-            
+
             while retries <= MAX_RETRIES:
                 log.info("  Validation attempt %d/%d", retries, MAX_RETRIES)
                 val_result = self.validator.validate(sql, retries_used=retries)
                 signal = self.validator.create_regeneration_signal(val_result)
-                
+
                 if val_result.is_valid:
                     is_valid = True
                     break
@@ -181,11 +199,13 @@ class PromotionAnalyticsOrchestrator:
                     log.warning("  Validation failed: %s", last_error)
                     if signal.should_regenerate:
                         log.info("  Regenerating SQL...")
-                        # Pass failure reason to generation agent as feedback via the question
-                        q_with_feedback = f"{question}\n\nPREVIOUS ATTEMPT FAILED WITH ERROR: {last_error}. Please fix the SQL."
+                        q_with_feedback = (
+                            f"{question}\n\nPREVIOUS ATTEMPT FAILED WITH ERROR: "
+                            f"{last_error}. Please fix the SQL."
+                        )
                         sql_result = self.query_generator.generate_sql(
                             question=q_with_feedback,
-                            grounded_intent=grounded_intent
+                            grounded_intent=grounded_intent,
                         )
                         sql = sql_result.sql
                         retries += 1
@@ -195,6 +215,18 @@ class PromotionAnalyticsOrchestrator:
             # FAILURE RULE check
             if not is_valid:
                 log.error("  SQL validation failed repeatedly. Aborting pipeline.")
+                _metrics_logger.log_query_metrics(QueryMetrics(
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    question=question,
+                    topic=intent.topic,
+                    classification_confidence=intent.confidence,
+                    validation_passed=False,
+                    retry_count=retries,
+                    execution_latency_ms=0.0,
+                    row_count=0,
+                    cache_hit=False,
+                    response_generated=False,
+                ))
                 return self.create_fallback_response("SQL validation failed repeatedly.")
 
             # STEP 7: Execution
@@ -205,7 +237,7 @@ class PromotionAnalyticsOrchestrator:
                 df=execution_result.dataframe,
                 grounded_intent=grounded_intent,
                 metadata=execution_result.metadata,
-                sql=sql
+                sql=sql,
             )
 
             # STEP 9: Store Session Context
@@ -213,15 +245,44 @@ class PromotionAnalyticsOrchestrator:
                 "last_question": question,
                 "last_intent": intent,
                 "last_sql": sql,
-                "last_response": response.model_dump()
+                "last_response": response.model_dump(),
             })
 
-            # STEP 10: Return Response
-            log.info("  Pipeline succeeded. Latency: %.1f ms", execution_result.metadata.execution_time_ms)
+            # STEP 10: Log metrics and return
+            meta = execution_result.metadata
+            log.info("  Pipeline succeeded. Latency: %.1f ms", meta.execution_time_ms)
+            _metrics_logger.log_query_metrics(QueryMetrics(
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                question=question,
+                topic=intent.topic,
+                classification_confidence=intent.confidence,
+                validation_passed=True,
+                retry_count=retries,
+                execution_latency_ms=meta.execution_time_ms,
+                row_count=meta.row_count,
+                cache_hit=meta.cache_hit,
+                response_generated=True,
+            ))
             return response
 
         except Exception as exc:
             log.error("  Pipeline crashed: %s", exc)
+            _elapsed = (time.perf_counter() - _pipeline_start) * 1000
+            try:
+                _metrics_logger.log_query_metrics(QueryMetrics(
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    question=question,
+                    topic="unknown",
+                    classification_confidence=0.0,
+                    validation_passed=False,
+                    retry_count=0,
+                    execution_latency_ms=round(_elapsed, 2),
+                    row_count=0,
+                    cache_hit=False,
+                    response_generated=False,
+                ))
+            except Exception:
+                pass  # Never let logging crash the pipeline
             return self.create_fallback_response(f"An unexpected error occurred: {exc}")
 
 
