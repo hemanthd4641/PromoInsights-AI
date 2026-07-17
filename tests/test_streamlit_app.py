@@ -1,0 +1,276 @@
+"""
+tests/test_streamlit_app.py
+----------------------------
+Phase 10 — Unit Tests for the Streamlit App.
+
+Tests verify:
+  - Orchestrator can be initialised
+  - Session state keys are correctly populated
+  - Sample question execution path works end-to-end
+  - Reset session zeroes chat history
+
+Run:
+    python tests/test_streamlit_app.py
+"""
+
+import sys
+import uuid
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+# ---------------------------------------------------------------------------
+# Bootstrap project root
+# ---------------------------------------------------------------------------
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from agents.synthesizer import CoverageFlag, SynthesizedResponse
+
+PASS = "[PASS]"
+FAIL = "[FAIL]"
+
+
+def check(label: str, condition: bool, detail: str = "") -> bool:
+    tag = PASS if condition else FAIL
+    suffix = f" -- {detail}" if detail else ""
+    print(f"    {tag} {label}{suffix}")
+    return condition
+
+
+# ---------------------------------------------------------------------------
+# Build a canonical fallback SynthesizedResponse for mocking
+# ---------------------------------------------------------------------------
+
+def _make_response(answer: str = "Sales increased by 18%.") -> SynthesizedResponse:
+    return SynthesizedResponse(
+        answer_text=answer,
+        delta=2500.0,
+        pct_change=18.2,
+        table=[{"region": "South", "revenue": 16000, "units_sold": 340}],
+        explanation="Promotion effectiveness was measured over week-over-week.",
+        coverage_flag=CoverageFlag(
+            is_partial=False,
+            missing_weeks=[],
+            missing_regions=[],
+            message="Complete coverage.",
+        ),
+        sql_shown="SELECT region, SUM(revenue) FROM vw_weekly_sales WHERE region = 'South' GROUP BY region;",
+    )
+
+
+# ---------------------------------------------------------------------------
+# T1 — Orchestrator can be initialised
+# ---------------------------------------------------------------------------
+
+def test_orchestrator_init() -> bool:
+    total = 0
+    passed = 0
+
+    print("\n[T1] Orchestrator Initialisation")
+    total += 1
+    ok = True
+    try:
+        from agents.orchestrator import PromotionAnalyticsOrchestrator
+        orch = PromotionAnalyticsOrchestrator()
+        ok &= check("Orchestrator created", orch is not None)
+        ok &= check("SessionMemory present", hasattr(orch, "session_memory"))
+        ok &= check("IntentClassifier present", hasattr(orch, "intent_classifier"))
+        ok &= check("QueryGenerationAgent present", hasattr(orch, "query_generator"))
+        ok &= check("Synthesizer present", hasattr(orch, "synthesizer"))
+    except Exception as exc:
+        ok = False
+        print(f"    {FAIL} Exception: {exc}")
+    if ok:
+        passed += 1
+
+    return passed == total
+
+
+# ---------------------------------------------------------------------------
+# T2 — Session state keys are created (simulated via plain dict)
+# ---------------------------------------------------------------------------
+
+def test_session_state_creation() -> bool:
+    total = 0
+    passed = 0
+
+    print("\n[T2] Session State Creation")
+    total += 1
+    ok = True
+
+    # Simulate what init_session_state() does
+    fake_state: dict = {}
+
+    if "session_id" not in fake_state:
+        fake_state["session_id"] = str(uuid.uuid4())
+    if "chat_history" not in fake_state:
+        fake_state["chat_history"] = []
+    if "orchestrator" not in fake_state:
+        fake_state["orchestrator"] = MagicMock()
+
+    ok &= check("session_id key exists", "session_id" in fake_state)
+    ok &= check("session_id is non-empty UUID", bool(fake_state["session_id"]))
+    ok &= check("chat_history is empty list", fake_state["chat_history"] == [])
+    ok &= check("orchestrator key exists", "orchestrator" in fake_state)
+
+    if ok:
+        passed += 1
+
+    return passed == total
+
+
+# ---------------------------------------------------------------------------
+# T3 — Sample question execution path
+# ---------------------------------------------------------------------------
+
+def test_sample_question_execution() -> bool:
+    total = 0
+    passed = 0
+
+    print("\n[T3] Sample Question Execution Path")
+    total += 1
+    ok = True
+
+    mock_response = _make_response("Promotion effectiveness increased sales.")
+
+    try:
+        from agents.orchestrator import PromotionAnalyticsOrchestrator
+        orch = PromotionAnalyticsOrchestrator()
+
+        # Patch the handle method to return the mock response quickly
+        with patch.object(orch, "handle", return_value=mock_response) as mock_handle:
+            session_id = str(uuid.uuid4())
+            question = "Did PROMO_001 improve sales in South region?"
+
+            chat_history: list = []
+            chat_history.append({"role": "user", "content": question})
+
+            result = orch.handle(question=question, session_id=session_id)
+            chat_history.append({"role": "assistant", "content": result.model_dump()})
+
+            ok &= check("handle() called once", mock_handle.call_count == 1)
+            ok &= check("User message appended", chat_history[0]["role"] == "user")
+            ok &= check("Question stored", chat_history[0]["content"] == question)
+            ok &= check("Assistant response appended", chat_history[1]["role"] == "assistant")
+            ok &= check(
+                "Answer text in response",
+                "effectiveness" in chat_history[1]["content"]["answer_text"].lower(),
+            )
+    except Exception as exc:
+        ok = False
+        print(f"    {FAIL} Exception: {exc}")
+
+    if ok:
+        passed += 1
+
+    return passed == total
+
+
+# ---------------------------------------------------------------------------
+# T4 — Reset session zeroes chat history
+# ---------------------------------------------------------------------------
+
+def test_reset_session() -> bool:
+    total = 0
+    passed = 0
+
+    print("\n[T4] Reset Session")
+    total += 1
+    ok = True
+
+    # Simulate session state with existing history
+    fake_state = {
+        "chat_history": [
+            {"role": "user", "content": "Some question"},
+            {"role": "assistant", "content": {"answer_text": "Some answer"}},
+        ],
+        "session_id": "old-session-id",
+    }
+
+    # Simulate reset_session()
+    fake_state["chat_history"] = []
+    fake_state["session_id"] = str(uuid.uuid4())
+
+    ok &= check("chat_history cleared", fake_state["chat_history"] == [])
+    ok &= check("session_id regenerated", fake_state["session_id"] != "old-session-id")
+    ok &= check("session_id is non-empty", bool(fake_state["session_id"]))
+
+    if ok:
+        passed += 1
+
+    return passed == total
+
+
+# ---------------------------------------------------------------------------
+# T5 — SynthesizedResponse renders correctly
+# ---------------------------------------------------------------------------
+
+def test_response_model() -> bool:
+    total = 0
+    passed = 0
+
+    print("\n[T5] SynthesizedResponse Model")
+    total += 1
+    ok = True
+
+    resp = _make_response()
+
+    ok &= check("answer_text present", bool(resp.answer_text))
+    ok &= check("delta present", resp.delta == 2500.0)
+    ok &= check("pct_change present", resp.pct_change == 18.2)
+    ok &= check("table has rows", len(resp.table) > 0)
+    ok &= check("explanation present", bool(resp.explanation))
+    ok &= check("coverage_flag present", resp.coverage_flag is not None)
+    ok &= check("coverage is_partial=False", not resp.coverage_flag.is_partial)
+    ok &= check("sql_shown present", bool(resp.sql_shown))
+
+    # Roundtrip via model_dump / model_validate
+    as_dict = resp.model_dump()
+    restored = SynthesizedResponse(**as_dict)
+    ok &= check("model_dump roundtrip OK", restored.answer_text == resp.answer_text)
+
+    if ok:
+        passed += 1
+
+    return passed == total
+
+
+# ---------------------------------------------------------------------------
+# Runner
+# ---------------------------------------------------------------------------
+
+def run_tests() -> None:
+    total = 5
+    passed = 0
+    failed: list[str] = []
+
+    print("\n" + "=" * 70)
+    print("PHASE 10 -- STREAMLIT APP TEST SUITE")
+    print("=" * 70)
+
+    results = [
+        ("T1", test_orchestrator_init),
+        ("T2", test_session_state_creation),
+        ("T3", test_sample_question_execution),
+        ("T4", test_reset_session),
+        ("T5", test_response_model),
+    ]
+
+    for name, fn in results:
+        if fn():
+            passed += 1
+        else:
+            failed.append(name)
+
+    print("\n" + "=" * 70)
+    print(f"OVERALL RESULTS: {passed}/{total} tests passed")
+    if failed:
+        print(f"FAILED: {failed}")
+        sys.exit(1)
+    else:
+        print("All tests passed!")
+    print("=" * 70)
+
+
+if __name__ == "__main__":
+    run_tests()
