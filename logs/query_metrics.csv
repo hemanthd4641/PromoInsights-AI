@@ -170,3 +170,42 @@ timestamp,question,topic,classification_confidence,validation_passed,retry_count
 2026-07-17T11:24:13.243728+00:00,Compare North and South sales.,region_comparison,0.9,True,0,5.5,185,True,True
 2026-07-17T11:24:13.462240+00:00,Did inventory reduce in West region?,inventory,0.92,True,0,66.03,132,False,True
 2026-07-17T11:24:13.481960+00:00,How did unknown promotion PROMO_XYZ_UNKNOWN affect sales?,promotion,0.4,False,0,0.0,0,False,False
+2026-07-17T11:34:51.354466+00:00,Did PROMO_001 improve sales in South region?,promotion,0.96,True,0,61.19,1,False,True
+2026-07-17T11:34:51.621123+00:00,Which campaign performed best?,campaign_impact,0.88,True,0,55.0,1,False,True
+2026-07-17T11:34:51.849885+00:00,Which category generated highest revenue?,campaign_impact,0.87,True,0,6.18,221,True,True
+2026-07-17T11:34:52.087335+00:00,Compare North and South sales.,region_comparison,0.9,True,0,10.53,185,True,True
+2026-07-17T11:34:52.411608+00:00,Did inventory reduce in West region?,inventory,0.92,True,0,79.9,132,False,True
+2026-07-17T11:34:52.738367+00:00,How did unknown promotion PROMO_XYZ_UNKNOWN affect sales?,promotion,0.4,True,0,57.6,1,False,True
+2026-07-17T11:34:59.204419+00:00,test-session-unseen,promotion,0.0,False,0,0.0,0,False,False
+2026-07-17T11:34:59.919889+00:00,test-session-unseen,promotion,0.0,False,0,0.0,0,False,False
+2026-07-17T11:35:08.402772+00:00,test-session-unseen,promotion,0.4,True,0,26.55,1,False,True
+2026-07-17T11:35:08.896492+00:00,test-session-unseen,promotion,0.4,True,0,38.61,1,False,True
+2026-07-17T11:35:09.361058+00:00,test-session-unseen,promotion,0.4,True,0,33.11,1,False,True
+2026-07-17T11:36:30.012913+00:00,Did PROMO_001 improve sales in South region?,promotion,0.96,True,0,51.47,1,False,True
+2026-07-17T11:36:30.266145+00:00,Which campaign performed best?,campaign_impact,0.88,True,0,44.54,1,False,True
+2026-07-17T11:36:30.457273+00:00,Which category generated highest revenue?,campaign_impact,0.87,True,0,6.82,221,True,True
+2026-07-17T11:36:30.650118+00:00,Compare North and South sales.,region_comparison,0.9,True,0,9.19,185,True,True
+2026-07-17T11:36:30.892322+00:00,Did inventory reduce in West region?,inventory,0.92,True,0,60.71,132,False,True
+2026-07-17T11:36:31.126184+00:00,How did unknown promotion PROMO_XYZ_UNKNOWN affect sales?,promotion,0.4,True,0,47.94,1,False,True
+2026-07-17T11:36:49.683526+00:00,test-session-unseen,promotion,0.4,True,0,21.72,1,False,True
+2026-07-17T11:37:42.115598+00:00,test-session-unseen,promotion,0.4,True,0,35.73,1,False,True
+2026-07-17T11:37:42.659683+00:00,test-session-unseen,promotion,0.4,True,0,36.46,1,False,True
+2026-07-17T11:37:43.055624+00:00,test-session-unseen,promotion,0.4,True,0,34.57,1,False,True
+2026-07-17T11:37:43.484746+00:00,test-session-unseen,promotion,0.4,True,0,48.61,1,False,True
+2026-07-17T11:40:04.379797+00:00,Did PROMO_001 improve sales in South region?,promotion,0.96,True,0,41.73,1,False,True
+2026-07-17T11:40:04.762173+00:00,Which campaign performed best?,campaign_impact,0.88,True,0,47.03,1,False,True
+2026-07-17T11:40:04.925660+00:00,Which category generated highest revenue?,campaign_impact,0.87,True,0,4.88,221,True,True
+2026-07-17T11:40:05.053801+00:00,Compare North and South sales.,region_comparison,0.9,True,0,3.54,185,True,True
+2026-07-17T11:40:05.215349+00:00,Did inventory reduce in West region?,inventory,0.92,True,0,35.7,132,False,True
+2026-07-17T11:40:05.356011+00:00,How did unknown promotion PROMO_XYZ_UNKNOWN affect sales?,promotion,0.4,True,0,30.23,1,False,True
+2026-07-17T11:40:59.118561+00:00,test-session-unseen,promotion,0.4,True,0,37.87,1,False,True
+2026-07-17T11:40:59.326574+00:00,test-session-unseen,promotion,0.4,True,0,40.79,1,False,True
+2026-07-17T11:40:59.550453+00:00,test-session-unseen,promotion,0.4,True,0,45.04,1,False,True
+2026-07-17T11:40:59.775177+00:00,test-session-unseen,promotion,0.4,True,0,57.67,1,False,True
+2026-07-17T11:40:59.997227+00:00,test-session-unseen,promotion,0.4,True,0,45.55,1,False,True
+2026-07-17T11:42:15.016354+00:00,Did PROMO_001 improve sales in South region?,promotion,0.96,True,0,32.55,1,False,True
+2026-07-17T11:42:15.159067+00:00,Which campaign performed best?,campaign_impact,0.88,True,0,29.88,1,False,True
+2026-07-17T11:42:15.493187+00:00,Which category generated highest revenue?,campaign_impact,0.87,True,0,6.9,221,True,True
+2026-07-17T11:42:15.730701+00:00,Compare North and South sales.,region_comparison,0.9,True,0,4.16,185,True,True
+2026-07-17T11:42:16.007356+00:00,Did inventory reduce in West region?,inventory,0.92,True,0,61.1,132,False,True
+2026-07-17T11:42:16.333939+00:00,How did unknown promotion PROMO_XYZ_UNKNOWN affect sales?,promotion,0.4,True,0,61.26,1,False,True

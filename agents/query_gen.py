@@ -230,6 +230,7 @@ Your ONLY job is to output a single valid DuckDB SQL SELECT statement.
 7. All string filters must be exact-match (e.g. region = 'South').
 8. Always include a GROUP BY when using aggregate functions.
 9. End the statement with a semicolon.
+10. DYNAMIC GENERATION: Use the few-shot examples merely as a guide for schema structure and syntax. You must dynamically construct the correct SQL to answer the specific user question, which may require different group-bys, aggregations, window functions, or WHERE clauses than the examples. Do NOT just copy the examples.
 
 ## ALLOWED VIEWS (WHITELIST)
 

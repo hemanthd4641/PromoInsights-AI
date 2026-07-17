@@ -30,6 +30,8 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 from pydantic import BaseModel, Field
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_groq import ChatGroq
 
 # ---------------------------------------------------------------------------
 # Bootstrap project root
@@ -98,6 +100,32 @@ class ResponseSynthesizer:
 
     def __init__(self) -> None:
         log.info("ResponseSynthesizer initialised.")
+        
+        from config import GROQ_API_KEY, MODEL_NAME, MAX_RETRIES
+        
+        if not GROQ_API_KEY:
+            raise EnvironmentError("GROQ_API_KEY is not set.")
+            
+        self._llm = ChatGroq(
+            model=MODEL_NAME,
+            api_key=GROQ_API_KEY,
+            temperature=0.0,
+            max_retries=MAX_RETRIES,
+        )
+        
+        self._prompt = ChatPromptTemplate.from_messages([
+            ("system", "You are an expert Data Analyst and Executive Synthesizer for PromoInsights AI. "
+                       "Your job is to read the results of an SQL query execution and provide a clear, concise, "
+                       "business-friendly answer to the user's question.\n\n"
+                       "## RULES:\n"
+                       "- The data table provided may only contain up to 20 rows. If there are more rows, you will see a truncated note.\n"
+                       "- Do not mention SQL, databases, or 'the data shows'. Speak directly about the business outcome.\n"
+                       "- Use currency formatting (₹) for revenue metrics.\n"
+                       "- If the table is empty or does not directly answer the question, state that gracefully.\n"
+                       "- Do NOT use markdown code blocks or structured JSON in your response. Just plain text."),
+            ("human", "User Question: {question}\n\nGrounded Topic: {topic}\n\nQuery Results (Top 20 rows):\n{data_table}\n\n"
+                      "Synthesize the answer based on these results.")
+        ])
 
     # ------------------------------------------------------------------
     # Function 1 — detect_coverage  (context-aware)
@@ -163,181 +191,35 @@ class ResponseSynthesizer:
         )
 
     # ------------------------------------------------------------------
-    # Function 2 — generate_answer_text  (topic-aware)
+    # Function 2 — generate_answer_text  (Dynamic LLM Synthesis)
     # ------------------------------------------------------------------
 
     def generate_answer_text(
-        self, df: pd.DataFrame, grounded_intent: GroundedIntent
+        self, df: pd.DataFrame, grounded_intent: GroundedIntent, question: str
     ) -> str:
-        """Create a concise, topic-specific executive summary from the data."""
-        topic = grounded_intent.topic.lower()
-
+        """Create a concise, topic-specific executive summary from the data dynamically using an LLM."""
+        
         if df is None or df.empty:
             return "No matching records were found for the requested filters."
-
-        # ── PROMOTION effectiveness ──────────────────────────────────────────
-        if topic == "promotion":
-            return self._answer_promotion(df, grounded_intent)
-
-        # ── INVENTORY reduction ──────────────────────────────────────────────
-        elif topic == "inventory":
-            return self._answer_inventory(df, grounded_intent)
-
-        # ── REGION COMPARISON ────────────────────────────────────────────────
-        elif topic == "region_comparison":
-            return self._answer_region_comparison(df, grounded_intent)
-
-        # ── CAMPAIGN IMPACT / RANKING ────────────────────────────────────────
-        elif topic == "campaign_impact":
-            return self._answer_campaign_impact(df, grounded_intent)
-
-        return "Analysis complete based on the requested criteria."
-
-    # ------------------------------------------------------------------
-    # Topic-specific answer builders
-    # ------------------------------------------------------------------
-
-    def _answer_promotion(self, df: pd.DataFrame, intent: GroundedIntent) -> str:
-        """Generate promotion effectiveness answer."""
-        region_str = f" in the {intent.region} region" if intent.region else ""
-
-        # Look for a sales_lift column first (most specific)
-        if "sales_lift" in df.columns:
-            lift = df["sales_lift"].iloc[0]
-            if lift is not None and pd.notna(lift):
-                direction = "improved" if lift > 0 else "declined"
-                return (
-                    f"Promotion effectiveness{region_str}: sales {direction} by "
-                    f"{abs(lift):.1f}% compared to the pre-promotion baseline."
-                )
-
-        # Look for promo vs baseline units
-        if "promo_units_sold" in df.columns and "baseline_units_sold" in df.columns:
-            promo = df["promo_units_sold"].iloc[0]
-            baseline = df["baseline_units_sold"].iloc[0]
-            if baseline and baseline != 0:
-                lift = ((promo - baseline) / baseline) * 100
-                direction = "improved" if lift > 0 else "declined"
-                return (
-                    f"Promotion sales{region_str} {direction} by {abs(lift):.1f}% "
-                    f"vs the 4-week baseline ({int(baseline):,} → {int(promo):,} units)."
-                )
-
-        # Fallback: total revenue
-        rev_col = next((c for c in ["total_revenue", "revenue"] if c in df.columns), None)
-        if rev_col:
-            total = df[rev_col].sum()
-            return f"Promotion generated ₹{total:,.2f} in revenue{region_str}."
-
-        return f"Promotion analysis complete{region_str}."
-
-    def _answer_inventory(self, df: pd.DataFrame, intent: GroundedIntent) -> str:
-        """Generate inventory analysis answer."""
-        region_str = f" in the {intent.region} region" if intent.region else ""
-
-        stock_col = next(
-            (c for c in ["avg_stock", "stock_level", "total_stock", "avg_stock_level"]
-             if c in df.columns), None
-        )
-
-        if stock_col and len(df) >= 2:
-            first = df[stock_col].iloc[0]
-            last = df[stock_col].iloc[-1]
-            if pd.notna(first) and pd.notna(last) and first != 0:
-                change = ((last - first) / first) * 100
-                direction = "decreased" if change < 0 else "increased"
-                return (
-                    f"Inventory{region_str} {direction} by {abs(change):.1f}% "
-                    f"from {first:,.0f} to {last:,.0f} units over the analysis period."
-                )
-
-        if stock_col and len(df) == 1:
-            val = df[stock_col].iloc[0]
-            return f"Current inventory level{region_str}: {val:,.0f} units."
-
-        return f"Inventory analysis complete{region_str}. Review the supporting data table."
-
-    def _answer_region_comparison(self, df: pd.DataFrame, intent: GroundedIntent) -> str:
-        """Generate a side-by-side region comparison answer."""
-        rev_col = next(
-            (c for c in ["total_revenue", "revenue"] if c in df.columns), None
-        )
-        region_col = "region" if "region" in df.columns else None
-
-        if region_col and rev_col and len(df) >= 2:
-            # Sort by revenue descending
-            df_sorted = df.sort_values(rev_col, ascending=False).reset_index(drop=True)
-            top = df_sorted.iloc[0]
-            bottom = df_sorted.iloc[1]
-
-            top_name = top[region_col]
-            top_rev = top[rev_col]
-            bottom_name = bottom[region_col]
-            bottom_rev = bottom[rev_col]
-
-            diff = top_rev - bottom_rev
-            if bottom_rev and bottom_rev != 0:
-                pct_diff = (diff / bottom_rev) * 100
-                pct_str = f" ({pct_diff:.1f}% more)"
-            else:
-                pct_str = ""
-
-            lines = []
-            for _, row in df_sorted.iterrows():
-                lines.append(
-                    f"{row[region_col]} Revenue: ₹{row[rev_col]:,.2f}"
-                )
-            comparison = " | ".join(lines)
-            summary = (
-                f"{top_name} generated more revenue than {bottom_name}{pct_str}. "
-                f"Difference: ₹{diff:,.2f}."
-            )
-            return f"{comparison}. {summary}"
-
-        if region_col and rev_col and len(df) == 1:
-            row = df.iloc[0]
-            return f"{row[region_col]} Revenue: ₹{row[rev_col]:,.2f}."
-
-        return "Regional comparison data is available in the supporting table."
-
-    def _answer_campaign_impact(self, df: pd.DataFrame, intent: GroundedIntent) -> str:
-        """Identify and name the top performer for campaign/category/region rankings."""
-        rev_col = next(
-            (c for c in ["total_revenue", "revenue"] if c in df.columns), None
-        )
-
-        # Identify winner column
-        winner_col = None
-        winner_label = "item"
-        for col, label in [
-            ("promo_name", "campaign"),
-            ("promo_id", "campaign"),
-            ("category", "category"),
-            ("sku", "SKU"),
-            ("region", "region"),
-        ]:
-            if col in df.columns:
-                winner_col = col
-                winner_label = label
-                break
-
-        if winner_col and rev_col and not df.empty:
-            df_sorted = df.sort_values(rev_col, ascending=False).reset_index(drop=True)
-            winner_name = df_sorted[winner_col].iloc[0]
-            winner_rev = df_sorted[rev_col].iloc[0]
-            return (
-                f"The highest-performing {winner_label} was {winner_name} "
-                f"with total revenue of ₹{winner_rev:,.2f}."
-            )
-
-        if winner_col and not df.empty and rev_col is None:
-            winner_name = df[winner_col].iloc[0]
-            return f"The top-performing {winner_label} is {winner_name}."
-
-        if not df.empty:
-            return "Campaign impact analysis complete. Review the supporting data table."
-
-        return "No campaign records were found for the requested criteria."
+            
+        try:
+            # Limit to top 20 rows to avoid token explosion
+            df_subset = df.head(20)
+            data_md = df_subset.to_csv(index=False)
+            if len(df) > 20:
+                data_md += f"\n\n... (Truncated. Total rows: {len(df)})"
+                
+            chain = self._prompt | self._llm
+            response = chain.invoke({
+                "question": question,
+                "topic": grounded_intent.topic,
+                "data_table": data_md
+            })
+            return str(response.content).strip()
+            
+        except Exception as exc:
+            log.error("LLM synthesis failed: %s", exc)
+            return "Analysis complete based on the requested criteria. Please review the supporting data table."
 
     # ------------------------------------------------------------------
     # Function 3 — generate_explanation  (topic-aware, no "0 weeks" bug)
@@ -414,6 +296,7 @@ class ResponseSynthesizer:
         grounded_intent: GroundedIntent,
         metadata: ExecutionMetadata,
         sql: str,
+        question: str = "Query Analysis",
     ) -> SynthesizedResponse:
         """
         Convert execution inputs into a structured business response.
@@ -452,8 +335,8 @@ class ResponseSynthesizer:
             delta_val, pct_val = self.extract_metrics(df, grounded_intent)
             log.info("  Extracted metrics -> delta: %s, pct: %s", delta_val, pct_val)
 
-            # Step 3: Answer Generation (topic-aware)
-            answer = self.generate_answer_text(df, grounded_intent)
+            # Step 3: Answer Generation (Dynamic LLM)
+            answer = self.generate_answer_text(df, grounded_intent, question)
 
             # Step 4: Explanation Generation
             explanation = self.generate_explanation(df, grounded_intent, metadata)

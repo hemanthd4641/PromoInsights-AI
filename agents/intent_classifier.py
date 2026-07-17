@@ -158,6 +158,10 @@ Your task is to classify a business analytics question into exactly ONE topic an
 - Return ONLY valid JSON matching the required schema.
 - Do NOT include any explanation, markdown, or extra text.
 - All string fields are case-sensitive and must match the domain vocabulary exactly.
+
+## CONVERSATION HISTORY
+
+Use the provided conversation history to resolve pronouns (e.g., "Why?", "What about the West?") and infer missing context. If the current question refers to a campaign or region mentioned in the previous response, extract it as if it were stated in the current question.
 """
 
 # ---------------------------------------------------------------------------
@@ -193,19 +197,20 @@ class IntentClassifier:
             ChatPromptTemplate.from_messages(
                 [
                     ("system", SYSTEM_PROMPT),
-                    ("human", "{question}"),
+                    ("human", "Conversation History:\n{history}\n\nCurrent Question:\n{question}"),
                 ]
             )
             | llm.with_structured_output(Intent)
         )
         log.info("IntentClassifier ready.")
 
-    def classify(self, question: str) -> Intent:
+    def classify(self, question: str, history: str = "") -> Intent:
         """
         Classify a natural-language business question into a typed Intent.
 
         Args:
             question: The user's natural-language analytics question.
+            history: Optional conversation history string to resolve context.
 
         Returns:
             A validated Intent Pydantic object.
@@ -220,7 +225,10 @@ class IntentClassifier:
         log.info("Classifying question: %r", question)
 
         try:
-            raw = self._chain.invoke({"question": question})
+            raw = self._chain.invoke({
+                "question": question,
+                "history": history if history else "No previous history."
+            })
             # with_structured_output may return a dict or an Intent depending
             # on LangChain version — normalise to Intent either way.
             if isinstance(raw, dict):

@@ -52,92 +52,8 @@ log = logging.getLogger(__name__)
 MAX_FEW_SHOT: int = 3
 
 # ---------------------------------------------------------------------------
-# Deterministic Grounding Rules
-# Keyword triggers → (metric_definition, baseline_formula, comparison_window)
-# Evaluated in order — first match wins.
-# ---------------------------------------------------------------------------
-GROUNDING_RULES: List[Dict[str, Any]] = [
-    {
-        "keywords": ["improve sales", "improved sales", "sales improvement",
-                     "effectiveness", "effective", "promotion effective"],
-        "metric_definition": "effectiveness",
-        "baseline_formula": "(promo_sales - baseline_sales) / baseline_sales * 100",
-        "comparison_window": "4-week pre-promotion baseline",
-    },
-    {
-        "keywords": ["revenue growth", "revenue grew", "revenue increase",
-                     "revenue up", "sales growth", "sales grew"],
-        "metric_definition": "revenue_growth",
-        "baseline_formula": "(revenue_current_period - revenue_prior_period) / revenue_prior_period * 100",
-        "comparison_window": "current period vs. prior period",
-    },
-    {
-        "keywords": ["growth", "grew", "increase", "increased", "rising",
-                     "rose", "uptick"],
-        "metric_definition": "revenue_growth",
-        "baseline_formula": "(revenue_current_period - revenue_prior_period) / revenue_prior_period * 100",
-        "comparison_window": "current period vs. prior period",
-    },
-    {
-        "keywords": ["reduction", "reduce", "reduced", "decrease", "decreased",
-                     "decline", "fell", "drop", "dropped", "lower"],
-        "metric_definition": "reduction",
-        "baseline_formula": "(value_before - value_after) / value_before * 100",
-        "comparison_window": "negative week-over-week delta",
-    },
-    {
-        "keywords": ["lift", "incremental", "uplift", "above baseline",
-                     "above expected"],
-        "metric_definition": "lift",
-        "baseline_formula": "(promo_period_sales - baseline_sales) / baseline_sales * 100",
-        "comparison_window": "4-week pre-promotion baseline",
-    },
-    {
-        "keywords": ["best performing", "best performance", "performed best",
-                     "top performing", "highest performing", "which campaign",
-                     "campaign impact", "campaign performance"],
-        "metric_definition": "campaign_impact",
-        "baseline_formula": "SUM(revenue during promo) - SUM(expected baseline revenue)",
-        "comparison_window": "full campaign window (start_week to end_week)",
-    },
-    {
-        "keywords": ["highest revenue", "most revenue", "top revenue",
-                     "best sku", "top sku", "best product", "top product"],
-        "metric_definition": "campaign_impact",
-        "baseline_formula": "SUM(revenue during promo) - SUM(expected baseline revenue)",
-        "comparison_window": "full campaign window (start_week to end_week)",
-    },
-    {
-        "keywords": ["inventory turnover", "turnover rate", "sell-through",
-                     "stock turnover"],
-        "metric_definition": "inventory_turnover",
-        "baseline_formula": "SUM(units_sold) / AVG(stock_level)",
-        "comparison_window": "selected period",
-    },
-    {
-        "keywords": ["stockout", "out of stock", "stock risk", "stockout risk",
-                     "running out", "low stock"],
-        "metric_definition": "stockout_risk",
-        "baseline_formula": "stock_level / AVG(units_sold per week) < safety_threshold",
-        "comparison_window": "current week vs. 2-week safety buffer",
-    },
-    {
-        "keywords": ["regional", "region comparison", "compare region",
-                     "regional performance", "region vs", "regions"],
-        "metric_definition": "regional_performance",
-        "baseline_formula": "SUM(revenue) or SUM(units_sold) GROUP BY region ORDER BY metric DESC",
-        "comparison_window": "selected promotion or time window",
-    },
-    {
-        "keywords": ["stock", "inventory", "stock level", "overstocked",
-                     "understocked", "overstock", "understock"],
-        "metric_definition": "reduction",
-        "baseline_formula": "(value_before - value_after) / value_before * 100",
-        "comparison_window": "negative week-over-week delta",
-    },
-]
-
 # Fallback when no rule matches
+# ---------------------------------------------------------------------------
 _FALLBACK = {
     "metric_definition": "generic business metric",
     "baseline_formula": None,
@@ -233,27 +149,6 @@ class GroundedIntent(BaseModel):
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
-
-def _apply_keyword_rules(question: str) -> Optional[Dict[str, Any]]:
-    """
-    Scan GROUNDING_RULES in order and return the first matching rule dict.
-    Matching is case-insensitive substring search.
-
-    Returns None if no rule matches.
-    """
-    q_lower = question.lower()
-    for rule in GROUNDING_RULES:
-        for kw in rule["keywords"]:
-            if kw.lower() in q_lower:
-                return {
-                    "metric_definition": rule["metric_definition"],
-                    "baseline_formula": rule["baseline_formula"],
-                    "comparison_window": rule["comparison_window"],
-                }
-    return None
-
-
 def _pick_best_definition(definitions: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """
     From a list of ChromaDB glossary hits, return the one with the highest
@@ -314,51 +209,40 @@ class QueryGroundingAgent:
         log.info("  Topic    : %r", intent.topic)
 
         # ------------------------------------------------------------------
-        # Step 1 — Deterministic keyword matching (guarantees consistency)
+        # Step 1 — Semantic retrieval via ChromaDB (Phase 2 integration)
         # ------------------------------------------------------------------
-        rule_match = _apply_keyword_rules(question)
+        log.info("  Calling retrieve_grounding() for semantic matching")
+        try:
+            retrieval = retrieve_grounding(
+                query=question,
+                top_k_definitions=3,
+                top_k_examples=MAX_FEW_SHOT,
+            )
+            best_def = _pick_best_definition(retrieval.get("definitions", []))
+        except Exception as exc:
+            log.warning("  Retrieval failed: %s — using fallback", exc)
+            best_def = None
+            retrieval = {"definitions": [], "examples": []}
 
-        if rule_match:
-            metric_definition = rule_match["metric_definition"]
-            baseline_formula = rule_match["baseline_formula"]
-            comparison_window = rule_match["comparison_window"]
-            log.info("  [Rule match] metric=%r", metric_definition)
+        if best_def:
+            metric_definition = best_def.get("term", "generic business metric")
+            baseline_formula = best_def.get("formula") or None
+            comparison_window = None
+            log.info("  [RAG match] metric=%r (score=%.4f)",
+                     metric_definition,
+                     best_def.get("similarity_score", 0.0))
         else:
-            # --------------------------------------------------------------
-            # Step 2 — Semantic retrieval via ChromaDB (Phase 2 integration)
-            # --------------------------------------------------------------
-            log.info("  No keyword match — calling retrieve_grounding()")
-            try:
-                retrieval = retrieve_grounding(
-                    query=question,
-                    top_k_definitions=3,
-                    top_k_examples=MAX_FEW_SHOT,
-                )
-                best_def = _pick_best_definition(retrieval.get("definitions", []))
-            except Exception as exc:
-                log.warning("  Retrieval failed: %s — using fallback", exc)
-                best_def = None
-                retrieval = {"definitions": [], "examples": []}
-
-            if best_def:
-                metric_definition = best_def.get("term", "generic business metric")
-                baseline_formula = best_def.get("formula") or None
-                comparison_window = None
-                log.info("  [RAG match] metric=%r (score=%.4f)",
-                         metric_definition,
-                         best_def.get("similarity_score", 0.0))
-            else:
-                # ----------------------------------------------------------
-                # Step 3 — Topic-level default fallback
-                # ----------------------------------------------------------
-                topic_default = _TOPIC_DEFAULTS.get(intent.topic, _FALLBACK)
-                metric_definition = topic_default["metric_definition"]
-                baseline_formula = topic_default.get("baseline_formula")
-                comparison_window = topic_default.get("comparison_window")
-                log.info("  [Topic fallback] metric=%r", metric_definition)
+            # ----------------------------------------------------------
+            # Step 2 — Topic-level default fallback
+            # ----------------------------------------------------------
+            topic_default = _TOPIC_DEFAULTS.get(intent.topic, _FALLBACK)
+            metric_definition = topic_default["metric_definition"]
+            baseline_formula = topic_default.get("baseline_formula")
+            comparison_window = topic_default.get("comparison_window")
+            log.info("  [Topic fallback] metric=%r", metric_definition)
 
         # ------------------------------------------------------------------
-        # Step 4 — Always fetch few-shot examples from ChromaDB (Phase 2)
+        # Step 3 — Always fetch few-shot examples from ChromaDB (Phase 2)
         # ------------------------------------------------------------------
         few_shot_examples: List[Dict[str, Any]] = []
         try:
@@ -379,7 +263,7 @@ class QueryGroundingAgent:
         log.info("  few_shot_examples  : %d attached", len(few_shot_examples))
 
         # ------------------------------------------------------------------
-        # Step 5 — Assemble and validate GroundedIntent
+        # Step 4 — Assemble and validate GroundedIntent
         # ------------------------------------------------------------------
         return GroundedIntent(
             topic=intent.topic,

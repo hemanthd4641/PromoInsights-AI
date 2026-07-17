@@ -145,22 +145,24 @@ class PromotionAnalyticsOrchestrator:
             self.session_memory.create_session(session_id)
             session_data = self.session_memory.get_session(session_id)
 
-            # Simple carry-forward context injection
-            context_prefix = ""
-            if session_data.get("last_intent"):
-                last_intent = session_data["last_intent"]
-                context_prefix = (
-                    f"Previous context: topic={last_intent.topic}, "
-                    f"region={last_intent.region}, category={last_intent.category}. "
-                )
-            contextualised_question = f"{context_prefix}Current Question: {question}"
+            # Construct full conversation history
+            history_text = ""
+            if session_data.get("history"):
+                for turn in session_data["history"][-3:]: # Get last 3 turns
+                    q = turn.get("last_question")
+                    ans_dict = turn.get("last_response", {})
+                    ans_text = ans_dict.get("answer_text", "")
+                    if q:
+                        history_text += f"User: {q}\n"
+                    if ans_text:
+                        history_text += f"System: {ans_text}\n"
 
             # STEP 2: Intent Classification
-            intent = self.intent_classifier.classify(contextualised_question)
+            intent = self.intent_classifier.classify(question, history=history_text)
 
             # STEP 3: Confidence Check
-            if intent.confidence < 0.70:
-                log.warning("  Low confidence (%.2f < 0.70) — aborting pipeline.", intent.confidence)
+            if intent.confidence < 0.30:
+                log.warning("  Low confidence (%.2f < 0.30) — aborting pipeline.", intent.confidence)
                 _metrics_logger.log_query_metrics(QueryMetrics(
                     timestamp=datetime.now(timezone.utc).isoformat(),
                     question=question,
@@ -238,6 +240,7 @@ class PromotionAnalyticsOrchestrator:
                 grounded_intent=grounded_intent,
                 metadata=execution_result.metadata,
                 sql=sql,
+                question=question,
             )
 
             # STEP 9: Store Session Context
