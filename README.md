@@ -178,6 +178,7 @@ promoinsights AI/
 │   └── test_intent_classifier.py   # Phase 3  — Intent classification tests
 │
 ├── config.py                       # Centralised settings (loaded from .env)
+├── run.py                          # Entry point script to launch the Streamlit application
 ├── requirements.txt                # Python dependencies
 ├── .env.example                    # Environment variable template
 ├── NOTES.md                        # Interview talking points & design notes
@@ -261,8 +262,9 @@ Embeds the business metric glossary and few-shot examples into ChromaDB at `chro
 ### Step 3 — Launch the Chat Application
 
 ```bash
-streamlit run app/streamlit_app.py
+python run.py
 ```
+*(Alternatively, you can run `streamlit run app/streamlit_app.py` directly)*
 
 Opens at [http://localhost:8501](http://localhost:8501).
 
@@ -334,7 +336,7 @@ A new user should be able to complete the following steps with **no code changes
 ✅ 4. Create .env with GROQ_API_KEY=<your_key>
 ✅ 5. python data/generate_data.py
 ✅ 6. python rag/build_index.py
-✅ 7. streamlit run app/streamlit_app.py
+✅ 7. python run.py
 ✅ 8. Ask: "Did PROMO_001 improve sales in South region?"
 ✅ 9. Verify: answer text + delta + table + SQL shown
 ✅ 10. streamlit run app/metrics_dashboard.py
