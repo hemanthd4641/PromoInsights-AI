@@ -80,8 +80,8 @@ def generate_promotions(n: int = PROMO_COUNT) -> pd.DataFrame:
 
         records.append(
             {
-                "promo_id": f"PROMO{str(i).zfill(3)}",
-                "promo_name": fake.catch_phrase(),
+                "promo_id": f"PROMO_{str(i).zfill(3)}",
+                "promo_name": f"PROMO_{str(i).zfill(3)}",
                 "region": random.choice(REGIONS),
                 "category": random.choice(CATEGORIES),
                 "start_week": start_week,

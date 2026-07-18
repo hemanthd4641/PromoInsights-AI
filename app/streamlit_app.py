@@ -15,6 +15,7 @@ import sys
 import uuid
 from pathlib import Path
 
+import json
 import pandas as pd
 import streamlit as st
 
@@ -26,7 +27,7 @@ PROJECT_ROOT = APP_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from agents.orchestrator import PromotionAnalyticsOrchestrator
-from agents.synthesizer import SynthesizedResponse
+from agents.synthesizer import SynthesizedResponse, coerce_to_synthesized_response
 
 # ---------------------------------------------------------------------------
 # Page Configuration
@@ -184,6 +185,43 @@ def reset_session() -> None:
 # Response Renderer
 # ---------------------------------------------------------------------------
 
+def prepare_display_dataframe(table_payload: object) -> pd.DataFrame:
+    """Convert arbitrary table payloads into a DataFrame that Streamlit can display safely."""
+    if isinstance(table_payload, pd.DataFrame):
+        frame = table_payload.copy()
+    elif isinstance(table_payload, list):
+        frame = pd.DataFrame(table_payload)
+    else:
+        frame = pd.DataFrame()
+
+    if frame.empty:
+        return pd.DataFrame(columns=["message"])
+
+    def _sanitize(value: object) -> object:
+        if value is None or value is pd.NA:
+            return None
+        if isinstance(value, (pd.Timestamp,)):
+            return value.to_pydatetime()
+        if isinstance(value, (dict, list, tuple, set)):
+            try:
+                return json.dumps(value, default=str)
+            except Exception:
+                return str(value)
+        if isinstance(value, float) and pd.isna(value):
+            return None
+        if hasattr(value, "tolist"):
+            try:
+                return _sanitize(value.tolist())
+            except Exception:
+                return str(value)
+        return value
+
+    for column in frame.columns:
+        frame[column] = frame[column].map(_sanitize)
+
+    return frame
+
+
 def render_response(response: SynthesizedResponse) -> None:
     """Render a SynthesizedResponse in structured cards inside the chat bubble."""
 
@@ -238,7 +276,12 @@ def render_response(response: SynthesizedResponse) -> None:
     # 3. Supporting table
     if response.table:
         st.markdown("**📋 Supporting Data**")
-        df = pd.DataFrame(response.table)
+        table_payload = response.table
+        if isinstance(table_payload, pd.DataFrame):
+            table_payload = table_payload.where(pd.notnull(table_payload), None).to_dict(orient="records")
+        elif not isinstance(table_payload, list):
+            table_payload = []
+        df = prepare_display_dataframe(table_payload)
         st.dataframe(df, use_container_width=True, hide_index=True)
     else:
         st.caption("No tabular data returned.")
@@ -409,9 +452,28 @@ def main() -> None:
             else:
                 with st.chat_message("assistant", avatar="📊"):
                     try:
-                        resp = SynthesizedResponse(**entry["content"])
+                        payload = entry["content"]
+                        print(type(payload))
+                        print(payload)
+                        print(coerce_to_synthesized_response(payload).model_dump())
+                        resp = coerce_to_synthesized_response(payload)
                         render_response(resp)
-                    except Exception:  # noqa: BLE001
+                    except Exception as exc:  # noqa: BLE001
+                        fallback = coerce_to_synthesized_response({
+                            "answer_text": "I couldn't render this previous response safely.",
+                            "delta": None,
+                            "pct_change": None,
+                            "table": [],
+                            "explanation": str(exc),
+                            "coverage_flag": {
+                                "is_partial": True,
+                                "missing_weeks": [],
+                                "missing_regions": [],
+                                "message": "Fallback response.",
+                            },
+                            "sql_shown": "",
+                        })
+                        render_response(fallback)
                         st.error("Could not render previous response.")
 
     # ── Handle sidebar button click ──────────────────────────────────────────

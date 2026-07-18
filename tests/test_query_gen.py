@@ -120,6 +120,21 @@ NEGATIVE_TESTS = [
 # Assertion helpers
 # ---------------------------------------------------------------------------
 
+def test_fallback_sql_used_for_unmatched_promotion_question() -> None:
+    grounder = QueryGroundingAgent()
+    gen = QueryGenerationAgent()
+    question = "Was there any improvement in revenue after PROMO_003?"
+    intent = Intent(topic="promotion", region="South", confidence=0.95)
+
+    grounded = grounder.ground(question, intent)
+    result = gen.generate_sql(question, grounded)
+
+    assert result.is_whitelist_compliant is True
+    assert result.sql.strip().lower() != "select 1;"
+    assert "vw_weekly_sales" in result.sql.lower()
+    assert "promo_id" in result.sql.lower() or "revenue" in result.sql.lower()
+
+
 def check_true(label: str, condition: bool, detail: str = "") -> bool:
     tag = PASS if condition else FAIL
     suffix = f" -- {detail}" if detail else ""

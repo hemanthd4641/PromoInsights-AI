@@ -37,7 +37,12 @@ from agents.executor import ExecutionAgent
 from agents.intent_classifier import IntentClassifier
 from agents.query_gen import QueryGenerationAgent
 from agents.query_grounding import QueryGroundingAgent
-from agents.synthesizer import CoverageFlag, ResponseSynthesizer, SynthesizedResponse
+from agents.synthesizer import (
+    CoverageFlag,
+    ResponseSynthesizer,
+    SynthesizedResponse,
+    coerce_to_synthesized_response,
+)
 from agents.validator import SQLValidator
 from config import LOG_LEVEL, MAX_RETRIES
 from logs.metrics_logger import QueryMetrics, get_metrics_logger
@@ -242,6 +247,11 @@ class PromotionAnalyticsOrchestrator:
                 sql=sql,
                 question=question,
             )
+            response = coerce_to_synthesized_response(response)
+
+            print(type(response))
+            print(response)
+            print(response.model_dump())
 
             # STEP 9: Store Session Context
             self.session_memory.update_session(session_id, {

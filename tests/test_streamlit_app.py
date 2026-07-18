@@ -18,13 +18,16 @@ import uuid
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import numpy as np
+import pandas as pd
+
 # ---------------------------------------------------------------------------
 # Bootstrap project root
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from agents.synthesizer import CoverageFlag, SynthesizedResponse
+from agents.synthesizer import CoverageFlag, SynthesizedResponse, normalize_response_payload
 
 PASS = "[PASS]"
 FAIL = "[FAIL]"
@@ -236,11 +239,82 @@ def test_response_model() -> bool:
 
 
 # ---------------------------------------------------------------------------
+# T6 — Payload normalization handles DataFrame / numpy values
+# ---------------------------------------------------------------------------
+
+def test_prepare_display_dataframe_sanitizes_nested_values() -> bool:
+    total = 0
+    passed = 0
+
+    print("\n[T6b] Display Table Sanitization")
+    total += 1
+    ok = True
+
+    try:
+        from app.streamlit_app import prepare_display_dataframe
+
+        payload = [
+            {"region": "North", "metrics": {"revenue": 100}, "score": np.nan},
+            {"region": "South", "metrics": [1, 2, 3], "score": 3.2},
+        ]
+        df = prepare_display_dataframe(payload)
+        ok &= check("DataFrame returned", isinstance(df, pd.DataFrame))
+        ok &= check("Rows preserved", len(df) == 2)
+        ok &= check("Nested values stringified", df.loc[0, "metrics"].startswith("{"))
+        ok &= check("NaN values tolerated", df.loc[0, "score"] is None or pd.isna(df.loc[0, "score"]))
+    except Exception as exc:
+        ok = False
+        print(f"    {FAIL} Exception: {exc}")
+
+    if ok:
+        passed += 1
+
+    return passed == total
+
+
+def test_payload_normalization_handles_dataframe_and_numpy_types() -> bool:
+    total = 0
+    passed = 0
+
+    print("\n[T6] Payload Normalization")
+    total += 1
+    ok = True
+
+    payload = {
+        "answer_text": "Sales improved.",
+        "delta": np.float64(12.5),
+        "pct_change": np.float64(3.2),
+        "table": pd.DataFrame([{"region": "South", "revenue": 2000}]),
+        "explanation": "Trend analysis.",
+        "coverage_flag": {
+            "is_partial": False,
+            "missing_weeks": [],
+            "missing_regions": [],
+            "message": "Complete coverage.",
+        },
+        "sql_shown": None,
+    }
+
+    normalized = normalize_response_payload(payload)
+
+    ok &= check("normalization returns dict", isinstance(normalized, dict))
+    ok &= check("table converted to list[dict]", isinstance(normalized["table"], list))
+    ok &= check("table rows preserved", normalized["table"][0]["region"] == "South")
+    ok &= check("numpy values converted to Python scalars", normalized["delta"] == 12.5)
+    ok &= check("sql_shown defaults to empty string", normalized["sql_shown"] == "")
+
+    if ok:
+        passed += 1
+
+    return passed == total
+
+
+# ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
 
 def run_tests() -> None:
-    total = 5
+    total = 6
     passed = 0
     failed: list[str] = []
 
@@ -254,6 +328,7 @@ def run_tests() -> None:
         ("T3", test_sample_question_execution),
         ("T4", test_reset_session),
         ("T5", test_response_model),
+        ("T6", test_payload_normalization_handles_dataframe_and_numpy_types),
     ]
 
     for name, fn in results:

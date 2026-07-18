@@ -24,6 +24,7 @@ Usage:
 """
 
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import Literal, Optional
@@ -60,6 +61,11 @@ TopicType = Literal[
     "inventory",
     "region_comparison",
     "campaign_impact",
+    "ranking",
+    "metric_lookup",
+    "aggregation",
+    "trend_analysis",
+    "anomaly_detection",
 ]
 
 # ---------------------------------------------------------------------------
@@ -173,36 +179,121 @@ class IntentClassifier:
     """
     LangChain + Groq powered Intent Classification Agent.
 
-    Uses structured output parsing to guarantee a valid Intent Pydantic
-    object is returned for every question, with automatic retry on failure.
+    Uses a deterministic keyword layer first for robustness, then falls back
+    to the LLM for richer interpretation when needed.
     """
 
     def __init__(self) -> None:
-        if not GROQ_API_KEY:
-            raise EnvironmentError(
-                "GROQ_API_KEY is not set. "
-                "Add it to your .env file: GROQ_API_KEY=your_key_here"
-            )
-
         log.info("Initialising IntentClassifier (model: %s)", MODEL_NAME)
 
-        # Build LLM with structured output bound to the Intent schema
-        llm = ChatGroq(
-            model=MODEL_NAME,
-            api_key=GROQ_API_KEY,
-            temperature=0.0,           # Deterministic classification
-            max_retries=MAX_RETRIES,
-        )
-        self._chain = (
-            ChatPromptTemplate.from_messages(
-                [
-                    ("system", SYSTEM_PROMPT),
-                    ("human", "Conversation History:\n{history}\n\nCurrent Question:\n{question}"),
-                ]
-            )
-            | llm.with_structured_output(Intent)
-        )
+        self._chain = None
+        if GROQ_API_KEY:
+            try:
+                llm = ChatGroq(
+                    model=MODEL_NAME,
+                    api_key=GROQ_API_KEY,
+                    temperature=0.0,
+                    max_retries=MAX_RETRIES,
+                )
+                self._chain = (
+                    ChatPromptTemplate.from_messages(
+                        [
+                            ("system", SYSTEM_PROMPT),
+                            ("human", "Conversation History:\n{history}\n\nCurrent Question:\n{question}"),
+                        ]
+                    )
+                    | llm.with_structured_output(Intent)
+                )
+            except Exception as exc:
+                log.warning("LLM initialisation failed, using heuristic fallback: %s", exc)
+        else:
+            log.warning("GROQ_API_KEY is not set; using heuristic intent classification.")
+
         log.info("IntentClassifier ready.")
+
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        return (text or "").lower().strip()
+
+    @classmethod
+    def _extract_region(cls, text: str) -> Optional[str]:
+        for region in ["north", "south", "east", "west"]:
+            if re.search(rf"\b{region}\b", text):
+                return region.capitalize()
+        return None
+
+    @classmethod
+    def _extract_sku(cls, text: str) -> Optional[str]:
+        match = re.search(r"\bsku\s*0*(\d+)\b", text, re.IGNORECASE)
+        if match:
+            return f"SKU{int(match.group(1)):03d}"
+        return None
+
+    @classmethod
+    def _extract_category(cls, text: str) -> Optional[str]:
+        for category in ["electronics", "groceries", "fashion", "home", "sports"]:
+            if category in text:
+                return category.capitalize()
+        return None
+
+    @classmethod
+    def _extract_time_window(cls, text: str) -> Optional[str]:
+        if "last month" in text or "previous month" in text:
+            return "last month"
+        if "last quarter" in text or "previous quarter" in text:
+            return "last quarter"
+        if "last week" in text or "previous week" in text:
+            return "last week"
+        if "q2" in text:
+            return "Q2"
+        if "week" in text:
+            match = re.search(r"week\s*(\d+)", text)
+            if match:
+                return f"week {match.group(1)}"
+        if "summer" in text:
+            return "summer"
+        return None
+
+    @classmethod
+    def _heuristic_intent(cls, question: str, history: str = "") -> Intent:
+        text = cls._normalize_text(f"{history} {question}")
+
+        topic = "promotion"
+        confidence = 0.55
+
+        if any(term in text for term in ["rank", "ranking", "top", "highest", "lowest", "worst", "best", "leader", "ranked first", "first by"]):
+            topic = "ranking"
+            confidence = 0.84
+        elif any(term in text for term in ["promo", "promotion", "campaign", "improve", "improvement", "lift", "effectiveness", "impact", "baseline", "after"]):
+            topic = "promotion"
+            confidence = 0.82
+        elif any(term in text for term in ["inventory", "stock", "stock level", "overstock", "understock", "reduce", "reduction"]):
+            topic = "inventory"
+            confidence = 0.82
+        elif any(term in text for term in ["compare", "comparison", "versus", "vs", "between"]):
+            topic = "region_comparison"
+            confidence = 0.8
+        elif any(term in text for term in ["metric", "lookup", "show me", "what is", "tell me"]):
+            topic = "metric_lookup"
+            confidence = 0.76
+        elif any(term in text for term in ["trend", "growth", "increase", "decrease", "over time", "month", "quarter"]):
+            topic = "trend_analysis"
+            confidence = 0.78
+        elif any(term in text for term in ["anomaly", "outlier", "unexpected", "spike", "drop"]):
+            topic = "anomaly_detection"
+            confidence = 0.79
+        elif any(term in text for term in ["revenue", "units", "sales", "perform", "generated"]):
+            topic = "campaign_impact"
+            confidence = 0.7
+
+        return Intent(
+            topic=topic,
+            region=cls._extract_region(text),
+            sku=cls._extract_sku(text),
+            category=cls._extract_category(text),
+            time_window=cls._extract_time_window(text),
+            confidence=confidence,
+        )
 
     def classify(self, question: str, history: str = "") -> Intent:
         """
@@ -224,46 +315,50 @@ class IntentClassifier:
 
         log.info("Classifying question: %r", question)
 
-        try:
-            raw = self._chain.invoke({
-                "question": question,
-                "history": history if history else "No previous history."
-            })
-            # with_structured_output may return a dict or an Intent depending
-            # on LangChain version — normalise to Intent either way.
-            if isinstance(raw, dict):
-                result: Intent = Intent(**raw)
-            elif isinstance(raw, Intent):
-                result = raw
-            else:
-                raise ValueError(
-                    f"Unexpected output type from LLM chain: {type(raw)}"
-                )
-        except Exception as exc:
-            log.exception("LLM call failed for question: %r", question)
-            log.warning("Falling back to local mock intent classification...")
+        heuristic = self._heuristic_intent(question, history)
+        if heuristic.confidence >= 0.75:
+            log.info("Using deterministic intent heuristic for question: %r", question)
+            result = heuristic
+        else:
             try:
-                from tests.mock_llm import MOCK_INTENTS
-                q_clean = question.lower().strip()
-                # Remove common prefixes from multi-turn context checks if present
-                if "current question:" in q_clean:
-                    q_clean = q_clean.split("current question:")[-1].strip()
-                
-                matched_key = None
-                for key in MOCK_INTENTS:
-                    if key in q_clean:
-                        matched_key = key
-                        break
-                if not matched_key:
-                    matched_key = "tell me something interesting."
-                
-                data = MOCK_INTENTS[matched_key]
-                result = Intent(**data)
-            except Exception as fallback_exc:
-                log.error("Mock intent fallback failed: %s", fallback_exc)
-                raise RuntimeError(
-                    f"IntentClassifier failed to process question: {question!r}"
-                ) from exc
+                raw = self._chain.invoke({
+                    "question": question,
+                    "history": history if history else "No previous history."
+                })
+                # with_structured_output may return a dict or an Intent depending
+                # on LangChain version — normalise to Intent either way.
+                if isinstance(raw, dict):
+                    result = Intent(**raw)
+                elif isinstance(raw, Intent):
+                    result = raw
+                else:
+                    raise ValueError(
+                        f"Unexpected output type from LLM chain: {type(raw)}"
+                    )
+            except Exception as exc:
+                log.exception("LLM call failed for question: %r", question)
+                log.warning("Falling back to local mock intent classification...")
+                try:
+                    from tests.mock_llm import MOCK_INTENTS
+                    q_clean = question.lower().strip()
+                    if "current question:" in q_clean:
+                        q_clean = q_clean.split("current question:")[-1].strip()
+
+                    matched_key = None
+                    for key in MOCK_INTENTS:
+                        if key in q_clean:
+                            matched_key = key
+                            break
+                    if not matched_key:
+                        matched_key = "tell me something interesting."
+
+                    data = MOCK_INTENTS[matched_key]
+                    result = Intent(**data)
+                except Exception as fallback_exc:
+                    log.error("Mock intent fallback failed: %s", fallback_exc)
+                    raise RuntimeError(
+                        f"IntentClassifier failed to process question: {question!r}"
+                    ) from exc
 
         log.info(
             "  topic=%r | region=%r | category=%r | sku=%r | "

@@ -20,6 +20,7 @@ Usage:
 """
 
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -192,6 +193,55 @@ class QueryGroundingAgent:
     4. Attaching up to 3 relevant few-shot SQL examples from ChromaDB.
     """
 
+    @staticmethod
+    def _apply_keyword_grounding(question: str, intent: Intent) -> Dict[str, Any]:
+        q = (question or "").lower()
+        topic = (intent.topic or "").lower()
+        metric_definition = None
+        baseline_formula = None
+        comparison_window = None
+
+        if topic == "promotion" or any(term in q for term in ["promo", "promotion", "improve", "improvement", "lift", "impact", "after", "baseline"]):
+            metric_definition = "promotion_effectiveness"
+            if "revenue" in q:
+                metric_definition = "promotion_revenue_effectiveness"
+            baseline_formula = "promo_period_metric - baseline_metric"
+            comparison_window = "promotion window compared with a pre-promotion baseline"
+        elif topic == "inventory" or any(term in q for term in ["inventory", "stock", "reduction"]):
+            metric_definition = "inventory_reduction"
+            baseline_formula = "(stock_before - stock_after) / stock_before * 100"
+            comparison_window = "week-over-week inventory movement"
+        elif topic == "region_comparison" or any(term in q for term in ["compare", "comparison", "region", "which region"]):
+            metric_definition = "regional_performance"
+            baseline_formula = "SUM(revenue) GROUP BY region"
+            comparison_window = "selected period across regions"
+        elif topic == "ranking" or any(term in q for term in ["rank", "highest", "lowest", "best", "worst"]):
+            metric_definition = "ranked_performance"
+            baseline_formula = "ORDER BY metric DESC LIMIT 1"
+            comparison_window = "overall period"
+        elif topic == "trend_analysis" or any(term in q for term in ["trend", "growth", "over time"]):
+            metric_definition = "trend_analysis"
+            baseline_formula = "current_value - prior_value"
+            comparison_window = "time series across the selected period"
+        elif topic == "anomaly_detection" or any(term in q for term in ["anomaly", "outlier", "spike", "drop"]):
+            metric_definition = "anomaly_detection"
+            baseline_formula = "z_score or deviation from rolling average"
+            comparison_window = "recent period"
+        elif topic == "metric_lookup" or any(term in q for term in ["metric", "summary"]):
+            metric_definition = "business_metric"
+            baseline_formula = None
+            comparison_window = "selected period"
+        else:
+            metric_definition = "generic business metric"
+            baseline_formula = None
+            comparison_window = None
+
+        return {
+            "metric_definition": metric_definition,
+            "baseline_formula": baseline_formula,
+            "comparison_window": comparison_window,
+        }
+
     def ground(self, question: str, intent: Intent) -> GroundedIntent:
         """
         Ground an intent into a resolved metric definition.
@@ -224,7 +274,9 @@ class QueryGroundingAgent:
             best_def = None
             retrieval = {"definitions": [], "examples": []}
 
-        if best_def:
+        keyword_grounding = self._apply_keyword_grounding(question, intent)
+
+        if best_def and not keyword_grounding.get("comparison_window"):
             metric_definition = best_def.get("term", "generic business metric")
             baseline_formula = best_def.get("formula") or None
             comparison_window = None
@@ -236,10 +288,10 @@ class QueryGroundingAgent:
             # Step 2 — Topic-level default fallback
             # ----------------------------------------------------------
             topic_default = _TOPIC_DEFAULTS.get(intent.topic, _FALLBACK)
-            metric_definition = topic_default["metric_definition"]
-            baseline_formula = topic_default.get("baseline_formula")
-            comparison_window = topic_default.get("comparison_window")
-            log.info("  [Topic fallback] metric=%r", metric_definition)
+            metric_definition = keyword_grounding.get("metric_definition") or topic_default["metric_definition"]
+            baseline_formula = keyword_grounding.get("baseline_formula") or topic_default.get("baseline_formula")
+            comparison_window = keyword_grounding.get("comparison_window") or topic_default.get("comparison_window")
+            log.info("  [Keyword fallback] metric=%r", metric_definition)
 
         # ------------------------------------------------------------------
         # Step 3 — Always fetch few-shot examples from ChromaDB (Phase 2)
