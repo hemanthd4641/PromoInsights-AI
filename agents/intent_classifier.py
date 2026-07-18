@@ -79,12 +79,13 @@ class Intent(BaseModel):
 
     Fields
     ------
-    topic       : Business question category (required).
-    region      : Geographic region extracted from the question, if any.
-    sku         : Product SKU extracted from the question, if any.
-    category    : Product category extracted from the question, if any.
-    time_window : Time reference extracted from the question, if any.
-    confidence  : Agent's self-reported confidence score [0.0, 1.0].
+    topic        : Business question category (required).
+    region       : Geographic region extracted from the question, if any.
+    sku          : Product SKU extracted from the question, if any.
+    category     : Product category extracted from the question, if any.
+    entity_type  : Explicit entity being ranked or compared (campaign, category, sku, region, inventory).
+    time_window  : Time reference extracted from the question, if any.
+    confidence   : Agent's self-reported confidence score [0.0, 1.0].
     """
 
     topic: TopicType = Field(
@@ -106,6 +107,12 @@ class Intent(BaseModel):
         description=(
             "Product category mentioned in the question "
             "(e.g. Electronics, Groceries, Fashion, Home, Sports)."
+        ),
+    )
+    entity_type: Optional[str] = Field(
+        default=None,
+        description=(
+            "Explicit entity being ranked or compared (campaign, category, sku, region, inventory)."
         ),
     )
     time_window: Optional[str] = Field(
@@ -237,6 +244,25 @@ class IntentClassifier:
         return None
 
     @classmethod
+    def _extract_entity_type(cls, text: str, category: Optional[str], sku: Optional[str], region: Optional[str]) -> Optional[str]:
+        text_norm = (text or "").lower()
+        if "inventory" in text_norm or "stock" in text_norm:
+            return "inventory"
+        if region:
+            return "region"
+        if sku:
+            return "sku"
+        if category:
+            return "category"
+        if "campaign" in text_norm or "campaigns" in text_norm:
+            return "campaign"
+        if "category" in text_norm:
+            return "category"
+        if any(term in text_norm for term in ["sku", "product"]):
+            return "sku"
+        return None
+
+    @classmethod
     def _extract_time_window(cls, text: str) -> Optional[str]:
         if "last month" in text or "previous month" in text:
             return "last month"
@@ -261,18 +287,41 @@ class IntentClassifier:
         topic = "promotion"
         confidence = 0.55
 
-        if any(term in text for term in ["rank", "ranking", "top", "highest", "lowest", "worst", "best", "leader", "ranked first", "first by"]):
+        region = cls._extract_region(text)
+        sku = cls._extract_sku(text)
+        category = cls._extract_category(text)
+
+        if any(term in text for term in ["inventory", "stock", "stock level", "overstock", "understock", "reduce", "reduction"]):
+            topic = "inventory"
+            confidence = 0.82
+        elif any(term in text for term in ["compare", "comparison", "versus", "vs", "between"]):
+            if region or "region" in text:
+                topic = "region_comparison"
+                confidence = 0.82
+            elif "campaign" in text or "campaigns" in text:
+                topic = "ranking"
+                confidence = 0.8
+            else:
+                topic = "region_comparison"
+                confidence = 0.8
+        elif any(term in text for term in ["which region", "region performed best", "performed best in", "which region performed"]):
+            topic = "region_comparison"
+            confidence = 0.86
+        elif any(term in text for term in ["category reacted best", "campaign performed best", "which campaign", "which sku", "sku generated", "which category reacted", "reacted best"]):
+            topic = "campaign_impact"
+            confidence = 0.84
+        elif any(term in text for term in ["category generated highest revenue", "top two campaigns", "compare top two", "generated highest revenue", "generated highest", "highest revenue"]):
+            topic = "ranking"
+            confidence = 0.84
+        elif any(term in text for term in ["lowest", "minimum", "least", "bottom", "worst"]):
+            topic = "ranking"
+            confidence = 0.86
+        elif any(term in text for term in ["highest", "top", "best", "most", "leader", "ranked first", "first by"]):
             topic = "ranking"
             confidence = 0.84
         elif any(term in text for term in ["promo", "promotion", "campaign", "improve", "improvement", "lift", "effectiveness", "impact", "baseline", "after"]):
             topic = "promotion"
             confidence = 0.82
-        elif any(term in text for term in ["inventory", "stock", "stock level", "overstock", "understock", "reduce", "reduction"]):
-            topic = "inventory"
-            confidence = 0.82
-        elif any(term in text for term in ["compare", "comparison", "versus", "vs", "between"]):
-            topic = "region_comparison"
-            confidence = 0.8
         elif any(term in text for term in ["metric", "lookup", "show me", "what is", "tell me"]):
             topic = "metric_lookup"
             confidence = 0.76
@@ -286,11 +335,14 @@ class IntentClassifier:
             topic = "campaign_impact"
             confidence = 0.7
 
+        entity_type = cls._extract_entity_type(text, category, sku, region)
+
         return Intent(
             topic=topic,
-            region=cls._extract_region(text),
-            sku=cls._extract_sku(text),
-            category=cls._extract_category(text),
+            region=region,
+            sku=sku,
+            category=category,
+            entity_type=entity_type,
             time_window=cls._extract_time_window(text),
             confidence=confidence,
         )

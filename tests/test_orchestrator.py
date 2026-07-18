@@ -116,10 +116,60 @@ def run_tests():
     else: failed_ids.append("T4")
 
     # ------------------------------------------------------------------
-    # T5: Low Confidence Test
+    # T5: Greeting Route
     # ------------------------------------------------------------------
     total += 1
-    print("\n[T5] Low Confidence Test")
+    print("\n[T5] Greeting Route")
+    ok = True
+    try:
+        res = orchestrator.handle("hi there", session_id="t5")
+        ok &= check("Greeting response returned", "hello" in res.answer_text.lower() or "hi" in res.answer_text.lower())
+        ok &= check("No SQL shown for greeting", not res.sql_shown)
+        ok &= check("Conversational tone", "assistant" in res.answer_text.lower() or "happy" in res.answer_text.lower() or "glad" in res.answer_text.lower())
+    except Exception as exc:
+        ok = False
+        print(f"    {FAIL} Exception: {exc}")
+    if ok: passed += 1
+    else: failed_ids.append("T5")
+
+    # ------------------------------------------------------------------
+    # T6: Help Route
+    # ------------------------------------------------------------------
+    total += 1
+    print("\n[T6] Help Route")
+    ok = True
+    try:
+        res = orchestrator.handle("what can you do", session_id="t6")
+        ok &= check("Help response returned", "capabilities" in res.answer_text.lower() or "support" in res.answer_text.lower())
+        ok &= check("No SQL shown for help", not res.sql_shown)
+    except Exception as exc:
+        ok = False
+        print(f"    {FAIL} Exception: {exc}")
+    if ok: passed += 1
+    else: failed_ids.append("T6")
+
+    # ------------------------------------------------------------------
+    # T7: Follow-Up Route uses session context
+    # ------------------------------------------------------------------
+    total += 1
+    print("\n[T7] Follow-Up Route")
+    ok = True
+    try:
+        orchestrator.handle("Which campaign performed best?", session_id="t7")
+        res = orchestrator.handle("Why?", session_id="t7")
+        ok &= check("Follow-up answer returned", bool(res.answer_text))
+        ok &= check("Follow-up uses context", "campaign" in res.answer_text.lower() or "best" in res.answer_text.lower() or "perform" in res.answer_text.lower())
+    except Exception as exc:
+        ok = False
+        print(f"    {FAIL} Exception: {exc}")
+    if ok: passed += 1
+    else: failed_ids.append("T7")
+
+    # ------------------------------------------------------------------
+    # T8: Low Confidence Test
+    # ------------------------------------------------------------------
+    total += 1
+    print("\n[T8] Low Confidence Test")
     ok = True
     try:
         res = orchestrator.handle("Tell me something interesting", session_id="t5")
@@ -154,7 +204,7 @@ def run_tests():
                 )
             mock_validate.side_effect = side_effect
             
-            res = orchestrator.handle("Compare North and South sales", session_id="t6")
+            res = orchestrator.handle("Compare North and South sales", session_id="t8")
             
             ok &= check("Returns Fallback", "reliable analysis" in res.answer_text.lower() or "clarification" in res.answer_text.lower())
             ok &= check("Explanation specifies validation failure", "validation failed" in res.explanation.lower())
@@ -163,22 +213,22 @@ def run_tests():
         ok = False
         print(f"    {FAIL} Exception: {exc}")
     if ok: passed += 1
-    else: failed_ids.append("T6")
+    else: failed_ids.append("T8")
 
     # ------------------------------------------------------------------
-    # T7: Session Memory Test (Multi-turn)
+    # T9: Session Memory Test (Multi-turn)
     # ------------------------------------------------------------------
     total += 1
-    print("\n[T7] Session Memory Multi-Turn")
+    print("\n[T9] Session Memory Multi-Turn")
     ok = True
     try:
-        orchestrator.handle("How did South perform?", session_id="t7")
+        orchestrator.handle("How did South perform?", session_id="t9")
         # Ensure context stored
-        session = orchestrator.session_memory.get_session("t7")
+        session = orchestrator.session_memory.get_session("t9")
         ok &= check("Context stored", session.get("last_intent") is not None)
         
         # Second query (uses context)
-        res = orchestrator.handle("What about North?", session_id="t7")
+        res = orchestrator.handle("What about North?", session_id="t9")
         ok &= check("Pipeline didn't crash", isinstance(res, SynthesizedResponse))
     except Exception as exc:
         ok = False

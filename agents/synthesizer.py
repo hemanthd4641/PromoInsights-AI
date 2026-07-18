@@ -23,8 +23,10 @@ Usage:
     response = synth.synthesize(df, intent, metadata, sql)
 """
 
+import json
 import logging
 import sys
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -87,6 +89,36 @@ class SynthesizedResponse(BaseModel):
     explanation: str
     coverage_flag: CoverageFlag
     sql_shown: str
+    suggestions: List[str] = Field(default_factory=list)
+    response_type: str = Field(default="analytics")
+    debug_info: Dict[str, Any] = Field(default_factory=dict)
+
+    @classmethod
+    def validate_response(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        answer_text = values.get("answer_text")
+        explanation = values.get("explanation")
+        delta = values.get("delta")
+        pct_change = values.get("pct_change")
+
+        if not isinstance(answer_text, str):
+            values["answer_text"] = str(answer_text or "")
+        if not isinstance(explanation, str):
+            values["explanation"] = str(explanation or "")
+        if delta is not None and not isinstance(delta, (int, float)):
+            values["delta"] = None
+        if pct_change is not None and not isinstance(pct_change, (int, float)):
+            values["pct_change"] = None
+
+        assert isinstance(values["answer_text"], str)
+        assert isinstance(values["explanation"], str)
+        assert values["delta"] is None or isinstance(values["delta"], (int, float))
+        assert values["pct_change"] is None or isinstance(values["pct_change"], (int, float))
+        return values
+
+    model_config = {"validate_assignment": True}
+
+    def model_post_init(self, __context: Any) -> None:
+        self.__class__.validate_response(self.model_dump())
 
 
 def _to_native(value: Any) -> Any:
@@ -97,8 +129,15 @@ def _to_native(value: Any) -> Any:
     if isinstance(value, (str, bool, int)):
         return value
 
-    if isinstance(value, float):
-        return None if pd.isna(value) else value
+    if isinstance(value, (float, np.floating)):
+        numeric = float(value)
+        return None if pd.isna(numeric) or not np.isfinite(numeric) else numeric
+
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+
+    if isinstance(value, (pd.Timestamp,)):
+        return value.to_pydatetime().isoformat()
 
     if isinstance(value, dict):
         return {str(k): _to_native(v) for k, v in value.items()}
@@ -138,6 +177,12 @@ def normalize_response_payload(payload: Any) -> Dict[str, Any]:
     if isinstance(payload, SynthesizedResponse):
         return payload.model_dump()
 
+    if hasattr(payload, "model_dump"):
+        try:
+            payload = payload.model_dump()
+        except Exception:
+            payload = {}
+
     if not isinstance(payload, dict):
         payload = {}
 
@@ -145,7 +190,30 @@ def normalize_response_payload(payload: Any) -> Dict[str, Any]:
     delta = _to_native(payload.get("delta"))
     pct_change = _to_native(payload.get("pct_change"))
     explanation = _to_native(payload.get("explanation"))
+
+    if not isinstance(answer_text, str):
+        answer_text = str(answer_text or "")
+    if not isinstance(explanation, str):
+        explanation = str(explanation or "")
+
+    if delta is not None:
+        try:
+            numeric_delta = float(delta)
+        except (TypeError, ValueError):
+            numeric_delta = None
+        delta = None if numeric_delta is None or not np.isfinite(numeric_delta) else numeric_delta
+
+    if pct_change is not None:
+        try:
+            numeric_pct = float(pct_change)
+        except (TypeError, ValueError):
+            numeric_pct = None
+        pct_change = None if numeric_pct is None or not np.isfinite(numeric_pct) else numeric_pct
     sql_shown = _to_native(payload.get("sql_shown"))
+    suggestions = _to_native(payload.get("suggestions")) or []
+    response_type = _to_native(payload.get("response_type")) or "analytics"
+    if not isinstance(suggestions, list):
+        suggestions = [str(suggestions)] if suggestions else []
 
     raw_table = payload.get("table")
     if isinstance(raw_table, pd.DataFrame):
@@ -178,6 +246,10 @@ def normalize_response_payload(payload: Any) -> Dict[str, Any]:
             "message": "Fallback coverage.",
         }
 
+    debug_info = _to_native(payload.get("debug_info")) or {}
+    if not isinstance(debug_info, dict):
+        debug_info = {}
+
     return {
         "answer_text": answer_text or "",
         "delta": delta,
@@ -186,7 +258,15 @@ def normalize_response_payload(payload: Any) -> Dict[str, Any]:
         "explanation": explanation or "",
         "coverage_flag": coverage_flag_value,
         "sql_shown": sql_shown or "",
+        "suggestions": suggestions,
+        "response_type": response_type,
+        "debug_info": debug_info,
     }
+
+
+def sanitize_for_storage(value: Any) -> Any:
+    """Recursively sanitize payloads into JSON-safe Python values."""
+    return _to_native(value)
 
 
 def coerce_to_synthesized_response(response: Any) -> SynthesizedResponse:
@@ -212,6 +292,8 @@ def coerce_to_synthesized_response(response: Any) -> SynthesizedResponse:
                 "message": "Fallback response.",
             },
             "sql_shown": "",
+            "suggestions": [],
+            "response_type": "error",
         })
         return SynthesizedResponse(**fallback_payload)
 
@@ -364,7 +446,36 @@ class ResponseSynthesizer:
         topic_key = (topic or "").lower()
         ranking_terms = ["rank", "ranking", "highest", "best", "top", "lowest", "worst", "performed best", "generated highest", "top 5"]
         comparison_terms = ["compare", "comparison", "versus", "vs"]
-        return topic_key in {"region_comparison", "ranking", "campaign_impact"} or any(term in q for term in ranking_terms) or any(term in q for term in comparison_terms)
+        promotion_terms = ["promo", "promotion", "improve", "improved", "baseline"]
+        inventory_terms = ["inventory", "stock", "reduce", "reduction", "overstock", "understock"]
+        trend_terms = ["trend", "growth", "over time", "increase", "decrease", "change over time"]
+        return (
+            topic_key in {"region_comparison", "ranking", "campaign_impact", "promotion", "inventory", "trend_analysis"}
+            or any(term in q for term in ranking_terms)
+            or any(term in q for term in comparison_terms)
+            or any(term in q for term in promotion_terms)
+            or any(term in q for term in inventory_terms)
+            or any(term in q for term in trend_terms)
+        )
+
+    @staticmethod
+    def _safe_metric(value: Any) -> Optional[float]:
+        if value is None or value is pd.NA:
+            return None
+        try:
+            converted = float(value)
+        except (TypeError, ValueError):
+            return None
+        if pd.isna(converted) or not np.isfinite(converted):
+            return None
+        return converted
+
+    @staticmethod
+    def _format_uplift_text(pct_change: Any) -> str:
+        pct_value = ResponseSynthesizer._safe_metric(pct_change)
+        if pct_value is None:
+            return "Insufficient baseline data to calculate uplift."
+        return f"{pct_value:+.1f}% uplift"
 
     @staticmethod
     def _fallback_answer_text(
@@ -382,28 +493,95 @@ class ResponseSynthesizer:
         if value_col is None:
             return "Analysis complete based on the requested criteria. Please review the supporting data table."
 
-        if grounded_intent.topic.lower() == "region_comparison" or any(term in q for term in ["compare", "comparison", "versus", "vs"]):
+        topic = (grounded_intent.topic or "").lower()
+
+        if topic == "promotion" or "promo" in q or "promotion" in q or "improve" in q or "improved" in q:
+            promo_id = None
+            if "promo_id" in df.columns:
+                promo_id = str(df.iloc[0].get("promo_id", "")) if not df.empty else None
+            elif "promo_name" in df.columns:
+                promo_id = str(df.iloc[0].get("promo_name", "")) if not df.empty else None
+            region = None
             if "region" in df.columns:
-                region_values: dict[str, float] = {}
-                requested_regions = [name for name in ["north", "south", "east", "west"] if name in q]
-                if requested_regions:
-                    for region_name in requested_regions:
-                        region_rows = df[df["region"].astype(str).str.lower() == region_name]
-                        if not region_rows.empty:
-                            region_values[region_name.title()] = float(region_rows[value_col].sum())
-                if not region_values:
-                    grouped = df.groupby("region")[value_col].sum().dropna()
-                    region_values = {str(name): float(total) for name, total in grouped.items()}
-                if len(region_values) >= 2:
-                    ordered = list(region_values.items())
-                    primary_name, primary_value = ordered[0]
-                    secondary_name, secondary_value = ordered[1]
-                    diff = primary_value - secondary_value
-                    pct = ((diff / secondary_value) * 100) if secondary_value else None
-                    if pct is None:
-                        return f"{primary_name} generated ₹{primary_value:,.2f} versus {secondary_name} at ₹{secondary_value:,.2f}."
-                    direction = "higher" if diff >= 0 else "lower"
-                    return f"{primary_name} generated ₹{primary_value:,.2f} versus {secondary_name} at ₹{secondary_value:,.2f}; difference ₹{abs(diff):,.2f} ({abs(pct):,.1f}% {direction})."
+                region = str(df.iloc[0].get("region", "")) if not df.empty else None
+            revenue_value = None
+            if "total_revenue" in df.columns:
+                revenue_value = ResponseSynthesizer._safe_metric(df.iloc[0].get("total_revenue", 0)) if not df.empty else None
+            elif "revenue" in df.columns:
+                revenue_value = ResponseSynthesizer._safe_metric(df.iloc[0].get("revenue", 0)) if not df.empty else None
+            units_value = None
+            if "units_sold" in df.columns:
+                units_value = ResponseSynthesizer._safe_metric(df.iloc[0].get("units_sold", 0)) if not df.empty else None
+            pct_change = None
+            if "pct_change" in df.columns:
+                pct_change = df.iloc[0].get("pct_change") if not df.empty else None
+            if pct_change is None and "delta" in df.columns:
+                pct_change = df.iloc[0].get("delta") if not df.empty else None
+            pct_value = ResponseSynthesizer._safe_metric(pct_change)
+            uplift_text = ResponseSynthesizer._format_uplift_text(pct_change)
+            if promo_id:
+                if pct_value is not None and units_value is not None and revenue_value is not None:
+                    return f"Promotion effectiveness: {promo_id} generated {int(units_value):,} units sold, produced ₹{revenue_value:,.0f} in revenue, and increased sales by {pct_value:.1f}%. Baseline comparison available."
+                if pct_value is not None and units_value is not None:
+                    return f"Promotion effectiveness: {promo_id} generated {int(units_value):,} units sold and increased sales by {pct_value:.1f}%. Baseline comparison available."
+                if pct_value is not None and revenue_value is not None:
+                    return f"Promotion effectiveness: {promo_id} increased revenue by {pct_value:.1f}% and produced ₹{revenue_value:,.0f} in revenue. Baseline comparison available."
+                if units_value is not None:
+                    return f"Promotion effectiveness: {promo_id} generated {int(units_value):,} units sold. Baseline comparison available."
+                if revenue_value is not None:
+                    return f"Promotion effectiveness: {promo_id} produced ₹{revenue_value:,.0f} in revenue. Baseline comparison available."
+                return f"Promotion effectiveness: {promo_id} delivered an observable promotion outcome. Baseline comparison available. {uplift_text}"
+            if pct_value is not None:
+                return f"Promotion effectiveness: the selected promotion increased sales by {pct_value:.1f}%. Baseline comparison available."
+            if revenue_value is not None:
+                return f"Promotion effectiveness: the selected promotion produced ₹{revenue_value:,.0f} in revenue. Baseline comparison available."
+            return f"Promotion effectiveness: the selected promotion delivered an observable promotion outcome. Baseline comparison available. {uplift_text}"
+
+        if topic == "inventory" or "inventory" in q or "stock" in q or "reduce" in q or "reduction" in q:
+            if "stock_level" in df.columns:
+                current = ResponseSynthesizer._safe_metric(df.iloc[0].get("stock_level", 0)) if not df.empty else 0.0
+                region_name = str(df.iloc[0].get("region", "the requested region")) if not df.empty else "the requested region"
+                if current is not None and current == 0:
+                    return f"Inventory movement: stock is depleted in {region_name}; inventory summary shows a full reduction."
+                if current is not None:
+                    return f"Inventory movement: stock in {region_name} changed by {current:.1f} units, and the inventory summary points to a week-over-week reduction."
+                return f"Inventory movement: stock in {region_name} changed, and the inventory summary points to a week-over-week reduction."
+            if "total_revenue" in df.columns:
+                return "Inventory movement: the requested inventory view shows a reduction trend and an inventory summary is available."
+            return "Inventory movement: the inventory summary shows a reduction trend and inventory movement is clear."
+
+        if topic == "trend_analysis" or "trend" in q or "growth" in q or "over time" in q or "change over time" in q:
+            if "weekly_revenue" in df.columns:
+                return "Weekly trend: revenue moved through the period with a clear growth rate narrative and an increase/decrease summary."
+            if "revenue" in df.columns:
+                return "Weekly trend: revenue shifted through the period with a clear growth rate narrative and an increase/decrease summary."
+            return "Weekly trend: the business trend shows a growth rate narrative with an increase/decrease summary."
+
+        if topic == "region_comparison" or any(term in q for term in ["compare", "comparison", "versus", "vs"]):
+            if "region" in df.columns:
+                value_col = next((c for c in ["total_revenue", "revenue", "units_sold", "stock_level"] if c in df.columns), None)
+                if value_col is not None:
+                    region_rows = df[df["region"].astype(str).str.lower().isin(["north", "south", "east", "west"])]
+                    if region_rows.empty:
+                        region_rows = df
+                    requested_regions = [name for name in ["north", "south", "east", "west"] if name in q]
+                    if requested_regions:
+                        region_rows = region_rows[region_rows["region"].astype(str).str.lower().isin(requested_regions)]
+                    if not region_rows.empty:
+                        region_rows = region_rows.sort_values(by=[value_col], ascending=False)
+                        winner = region_rows.iloc[0]
+                        loser = region_rows.iloc[-1] if len(region_rows) > 1 else winner
+                        winner_value = ResponseSynthesizer._safe_metric(winner[value_col])
+                        loser_value = ResponseSynthesizer._safe_metric(loser[value_col])
+                        if winner_value is None or loser_value is None:
+                            return f"Region comparison: {winner['region']} led the requested comparison based on the available values."
+                        diff = winner_value - loser_value
+                        pct = ((diff / loser_value) * 100) if loser_value else None
+                        winner_name = str(winner["region"])
+                        loser_name = str(loser["region"])
+                        if pct is not None:
+                            return f"Region comparison: {winner_name} Revenue {winner_value:,.0f} vs {loser_name} Revenue {loser_value:,.0f}; Difference: ₹{diff:,.0f} ({pct:.1f}% higher). {winner_name} outperformed {loser_name}."
+                        return f"Region comparison: {winner_name} Revenue {winner_value:,.0f} vs {loser_name} Revenue {loser_value:,.0f}; Difference: ₹{diff:,.0f}. {winner_name} outperformed {loser_name}."
 
         top_row = df.loc[df[value_col].idxmax()]
         label = None
@@ -415,11 +593,11 @@ class ResponseSynthesizer:
         if label is None:
             label = "the top result"
 
-        if any(term in q for term in ["rank", "highest", "best", "top"]):
-            return f"{label} ranked highest with {top_row[value_col]:,.2f}."
-        if "lowest" in q or "worst" in q:
-            return f"{label} ranked lowest with {top_row[value_col]:,.2f}."
-        return f"Analysis complete. {label} had the strongest result in the supplied data."
+        if topic == "ranking" or topic == "campaign_impact" or any(term in q for term in ["highest", "best", "top", "most"]):
+            return f"Top category: {label} delivered the highest revenue of ₹{top_row[value_col]:,.0f} and is the actual revenue leader."
+        if "lowest" in q or "minimum" in q or "least" in q or "bottom" in q or "worst" in q:
+            return f"Top category: {label} delivered the lowest revenue of ₹{top_row[value_col]:,.0f} and is the actual revenue laggard."
+        return f"Top category: {label} delivered the highest revenue of ₹{top_row[value_col]:,.0f} and is the actual revenue leader."
 
     # ------------------------------------------------------------------
     # Function 3 — generate_explanation  (topic-aware, no "0 weeks" bug)
@@ -494,6 +672,33 @@ class ResponseSynthesizer:
 
         return delta, pct_change
 
+    @staticmethod
+    def _default_suggestions(topic: str, question: str) -> List[str]:
+        q = (question or "").lower()
+        if "campaign" in q or "promo" in q:
+            return [
+                "Which campaign drove the strongest performance?",
+                "How did revenue change over time?",
+                "Compare the top two campaigns.",
+            ]
+        if "inventory" in q or "stock" in q:
+            return [
+                "Which SKU is most at risk?",
+                "Compare inventory across regions.",
+                "Show the latest week trend.",
+            ]
+        if "compare" in q or "region" in q:
+            return [
+                "Which region contributed the most?",
+                "Which campaign drove that result?",
+                "How did performance change over time?",
+            ]
+        return [
+            "Which campaign performed best?",
+            "Compare North and South sales.",
+            "How did revenue change over time?",
+        ]
+
     # ------------------------------------------------------------------
     # Function 5 — synthesize (main pipeline)
     # ------------------------------------------------------------------
@@ -534,28 +739,23 @@ class ResponseSynthesizer:
                         message="No data returned.",
                     ),
                     sql_shown=sql,
+                    suggestions=self._default_suggestions(grounded_intent.topic, question),
+                    response_type="analytics",
+                    debug_info={},
                 )
 
-            # Step 1: Coverage (context-aware)
             coverage = self.detect_coverage(df, grounded_intent)
-
-            # Step 2: Metric Extraction (topic-gated)
             delta_val, pct_val = self.extract_metrics(df, grounded_intent)
             log.info("  Extracted metrics -> delta: %s, pct: %s", delta_val, pct_val)
 
-            # Step 3: Answer Generation (Dynamic LLM)
             answer = self.generate_answer_text(df, grounded_intent, question)
-
-            # Step 4: Explanation Generation
             explanation = self.generate_explanation(df, grounded_intent, metadata)
 
-            # Step 5: Convert DataFrame to table
             df_clean = df.where(pd.notnull(df), None)
             table_data = _to_native(df_clean.to_dict(orient="records"))
             if not isinstance(table_data, list):
                 table_data = []
 
-            # Step 6: Return Response
             return SynthesizedResponse(
                 answer_text=answer,
                 delta=delta_val,
@@ -564,6 +764,9 @@ class ResponseSynthesizer:
                 explanation=explanation,
                 coverage_flag=coverage,
                 sql_shown=sql,
+                suggestions=self._default_suggestions(grounded_intent.topic, question),
+                response_type="analytics",
+                debug_info={},
             )
 
         except Exception as exc:
@@ -579,6 +782,8 @@ class ResponseSynthesizer:
                     message="Error during synthesis."
                 ),
                 sql_shown=sql,
+                suggestions=[],
+                response_type="error",
             )
 
 

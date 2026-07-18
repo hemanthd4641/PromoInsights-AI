@@ -276,6 +276,7 @@ def _build_intent_block(grounded: GroundedIntent) -> str:
         f"- Region             : {grounded.region or 'any'}",
         f"- SKU                : {grounded.sku or 'any'}",
         f"- Category           : {grounded.category or 'any'}",
+        f"- Entity Type        : {grounded.entity_type or 'any'}",
         f"- Time Window        : {grounded.time_window or 'all weeks'}",
     ]
     return "\n".join(parts)
@@ -300,7 +301,7 @@ class QueryGenerationAgent:
         match = re.search(r"promo[_\s]*0*(\d+)", question, re.IGNORECASE)
         if not match:
             return None
-        return f"PROMO{int(match.group(1)):03d}"
+        return f"PROMO_{int(match.group(1)):03d}"
 
     @classmethod
     def _fallback_sql(cls, question: str, grounded_intent: GroundedIntent) -> str:
@@ -309,6 +310,7 @@ class QueryGenerationAgent:
         region = (grounded_intent.region or "").strip()
         category = (grounded_intent.category or "").strip()
         sku = (grounded_intent.sku or "").strip()
+        entity_type = (grounded_intent.entity_type or "").strip().lower()
         promo_id = cls._normalize_promo_id(question)
 
         if topic == "inventory" or "inventory" in q or "stock" in q:
@@ -326,7 +328,50 @@ class QueryGenerationAgent:
                 f"{where_clause} ORDER BY i.week, i.region, i.sku"
             )
 
-        if topic == "promotion" or any(term in q for term in ["promo", "promotion", "improve", "impact", "after", "baseline", "revenue"]):
+        if topic == "ranking" or any(term in q for term in ["rank", "highest", "lowest", "best", "worst", "top", "bottom", "minimum", "least"]):
+            if entity_type == "campaign" or "campaign" in q:
+                if "lowest" in q or "minimum" in q or "least" in q or "bottom" in q or "worst" in q:
+                    return (
+                        "SELECT s.promo_id AS campaign, MIN(s.revenue) AS total_revenue "
+                        "FROM vw_weekly_sales s GROUP BY s.promo_id ORDER BY total_revenue ASC LIMIT 5"
+                    )
+                return (
+                    "SELECT s.promo_id AS campaign, MAX(s.revenue) AS total_revenue "
+                    "FROM vw_weekly_sales s GROUP BY s.promo_id ORDER BY total_revenue DESC LIMIT 5"
+                )
+            if entity_type == "category" or category:
+                if "lowest" in q or "minimum" in q or "least" in q or "bottom" in q or "worst" in q:
+                    return (
+                        "SELECT s.category, MIN(s.revenue) AS total_revenue "
+                        "FROM vw_weekly_sales s GROUP BY s.category ORDER BY total_revenue ASC LIMIT 5"
+                    )
+                return (
+                    "SELECT s.category, MAX(s.revenue) AS total_revenue "
+                    "FROM vw_weekly_sales s GROUP BY s.category ORDER BY total_revenue DESC LIMIT 5"
+                )
+            if entity_type == "sku" or sku:
+                if "lowest" in q or "minimum" in q or "least" in q or "bottom" in q or "worst" in q:
+                    return (
+                        "SELECT s.sku, MIN(s.revenue) AS total_revenue "
+                        "FROM vw_weekly_sales s "
+                        f"WHERE s.sku = '{sku}' GROUP BY s.sku ORDER BY total_revenue ASC"
+                    )
+                return (
+                    "SELECT s.sku, MAX(s.revenue) AS total_revenue "
+                    "FROM vw_weekly_sales s "
+                    f"WHERE s.sku = '{sku}' GROUP BY s.sku ORDER BY total_revenue DESC"
+                )
+            if "lowest" in q or "minimum" in q or "least" in q or "bottom" in q or "worst" in q:
+                return (
+                    "SELECT s.sku, MIN(s.revenue) AS total_revenue "
+                    "FROM vw_weekly_sales s GROUP BY s.sku ORDER BY total_revenue ASC LIMIT 5"
+                )
+            return (
+                "SELECT s.sku, MAX(s.revenue) AS total_revenue "
+                "FROM vw_weekly_sales s GROUP BY s.sku ORDER BY total_revenue DESC LIMIT 5"
+            )
+
+        if topic == "promotion" or any(term in q for term in ["promo", "promotion", "improve", "impact", "after", "baseline"]):
             where_parts = []
             if promo_id:
                 where_parts.append(f"s.promo_id = '{promo_id}'")
@@ -334,21 +379,18 @@ class QueryGenerationAgent:
                 where_parts.append(f"s.region = '{region}'")
             where_clause = " WHERE " + " AND ".join(where_parts) if where_parts else ""
             return (
-                "SELECT s.region, SUM(s.revenue) AS total_revenue, SUM(s.units_sold) AS total_units "
-                "FROM vw_weekly_sales s"
-                f"{where_clause} GROUP BY s.region ORDER BY total_revenue DESC"
-            )
-
-        if topic == "ranking" or any(term in q for term in ["rank", "highest", "lowest", "best", "worst"]):
-            if sku:
-                return (
-                    "SELECT s.sku, SUM(s.revenue) AS total_revenue "
-                    "FROM vw_weekly_sales s "
-                    f"WHERE s.sku = '{sku}' GROUP BY s.sku ORDER BY total_revenue DESC"
-                )
-            return (
-                "SELECT s.sku, SUM(s.revenue) AS total_revenue "
-                "FROM vw_weekly_sales s GROUP BY s.sku ORDER BY total_revenue DESC LIMIT 5"
+                "WITH promo_period AS ("
+                "SELECT s.region, SUM(s.revenue) AS promo_revenue "
+                "FROM vw_weekly_sales s "
+                "JOIN vw_promo_calendar p ON s.promo_id = p.promo_id"
+                f"{where_clause} AND s.week BETWEEN p.start_week AND p.end_week GROUP BY s.region), "
+                "baseline_period AS ("
+                "SELECT s.region, SUM(s.revenue) AS baseline_revenue "
+                "FROM vw_weekly_sales s "
+                "JOIN vw_promo_calendar p ON s.promo_id = p.promo_id"
+                f"{where_clause} AND s.week < p.start_week AND s.week >= p.start_week - 4 GROUP BY s.region) "
+                "SELECT pp.region, pp.promo_revenue, bp.baseline_revenue, ROUND(((pp.promo_revenue - bp.baseline_revenue) / NULLIF(bp.baseline_revenue, 0)) * 100, 2) AS pct_change "
+                "FROM promo_period pp LEFT JOIN baseline_period bp ON pp.region = bp.region ORDER BY pp.region"
             )
 
         if topic == "region_comparison" or any(term in q for term in ["compare", "comparison", "versus", "vs"]):

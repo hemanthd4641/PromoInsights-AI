@@ -1,369 +1,580 @@
-# 📊 Promotion Analytics AI Assistant
+# PromoInsights AI
 
-> A production-grade agentic analytics system that converts natural-language business questions into validated SQL, executes them on DuckDB, and returns grounded, structured insights through a Streamlit chat interface.
+## AI-Powered Retail Analytics Copilot
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
-[![LangChain](https://img.shields.io/badge/LangChain-0.x-green?logo=chainlink)](https://langchain.com)
-[![Groq](https://img.shields.io/badge/LLM-Groq%20LLaMA--3.3--70B-orange)](https://groq.com)
-[![DuckDB](https://img.shields.io/badge/DB-DuckDB-yellow)](https://duckdb.org)
-[![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)](https://streamlit.io)
+PromoInsights AI is a production-inspired multi-agent analytics assistant that transforms natural language business questions into grounded insights, validated SQL, supporting data, and business-friendly explanations.
 
----
+Instead of requiring users to write SQL, navigate dashboards, or manually combine reports, PromoInsights AI enables business users to ask questions in plain English and receive actionable answers instantly.
 
-## 📋 Table of Contents
+Examples:
 
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Folder Structure](#folder-structure)
-- [Installation](#installation)
-- [Environment Setup](#environment-setup)
-- [Running the System](#running-the-system)
-- [Running Tests](#running-tests)
-- [Monitoring Dashboard](#monitoring-dashboard)
-- [Fresh Clone Validation](#fresh-clone-validation)
-- [Design Decisions](#design-decisions)
+- Did PROMO_001 improve sales in the South region?
+- Which campaign performed best?
+- Compare North and South sales.
+- Which category generated the highest revenue?
+- Did inventory reduce in the West region?
+- What trends do you see in the data?
+
+The system combines LLM reasoning, Retrieval-Augmented Generation (RAG), Text-to-SQL, semantic modeling, validation pipelines, caching, and business-focused response synthesis to deliver reliable analytics experiences.
 
 ---
 
-## Overview
+# Business Value
 
-**Promotion Analytics AI Assistant** is a multi-agent AI system for retail business analytics. Business users ask plain-English questions about:
+PromoInsights AI helps organizations:
 
-- 🎯 **Promotion Performance** — Was PROMO_001 effective in the South region?
-- 📦 **Inventory Movement** — Did stock levels decrease in West after Q2?
-- 🗺 **Regional Comparisons** — Which region generated the highest revenue?
-- 📣 **Campaign Impact** — Which campaign drove the most unit sales?
-
-The system responds with a direct numeric answer, delta, percentage change, supporting data table, business explanation, and the exact SQL that produced the result.
-
-**Key properties:**
-- ✅ Grounded — metric definitions retrieved from ChromaDB, not invented by the LLM
-- ✅ Safe — SQL only touches semantic-layer views, never raw tables
-- ✅ Auditable — generated SQL is always shown to the user
-- ✅ Observable — every pipeline run is logged to a metrics CSV and visualised in a live dashboard
-- ✅ Never crashes — structured fallback responses on every failure
+- Reduce dependency on SQL experts
+- Enable self-service analytics for business users
+- Accelerate decision-making
+- Improve visibility into promotions and campaigns
+- Analyze inventory and regional performance quickly
+- Convert business questions into actionable insights
+- Bridge the gap between business stakeholders and data teams
 
 ---
 
-## Features
+# Key Features
 
 | Feature | Description |
-|---|---|
-| 🧠 Intent Classification | LLM classifies question topic and extracts entities (region, SKU, category, time window) |
-| 🔍 Query Grounding | ChromaDB RAG resolves business terms (`lift`, `effectiveness`) to canonical definitions |
-| 🛠 Text-to-SQL | LLM generates DuckDB SQL constrained to semantic-layer views only |
-| ✅ SQL Validation | Syntax check + row-count bounds check with automatic retry loop (max 2) |
-| ⚡ Execution Layer | Cache-first DuckDB execution with rollup cache for common queries |
-| 📐 Response Synthesis | Produces answer text, delta, % change, coverage flag, and explanation |
-| 💬 Streamlit Chat UI | ChatGPT-style interface with metric cards, SQL expander, coverage badges |
-| 📈 Monitoring Dashboard | Real-time KPIs: accuracy, latency, confidence, validation rate, retry counts |
-| 🔄 Session Memory | Multi-turn context carry-forward for follow-up questions |
+|----------|-------------|
+| 🧠 Intent Classification | Understands business questions and extracts entities such as regions, campaigns, categories, SKUs, and time windows |
+| 🔍 Query Grounding | Uses RAG to resolve ambiguous business terms such as effectiveness, uplift, reduction, and growth |
+| 🛠️ Text-to-SQL | Generates validated DuckDB SQL from natural language |
+| ✅ SQL Validation | Performs syntax validation and row-count safety checks before execution |
+| ⚡ Query Execution | Executes validated SQL with cache-first optimization |
+| 📊 Business Insights | Converts query results into executive-friendly explanations |
+| 💬 Conversational Analytics | Supports natural language interaction and follow-up questions |
+| 📈 Monitoring Dashboard | Tracks latency, validation rate, retries, and system health |
+| 🔄 Session Memory | Maintains context across conversations |
+| 🔐 Safe Query Generation | Restricts SQL generation to semantic-layer views only |
+| 🎯 Business-Oriented Responses | Returns direct answers, supporting data, confidence indicators, and explanations |
 
 ---
 
-## Architecture
+# Tech Stack
 
-```
+## Frontend
+
+- Streamlit
+
+## Backend
+
+- Python 3.10+
+
+## Database
+
+- DuckDB
+
+## Vector Database
+
+- ChromaDB
+
+## AI & LLM Layer
+
+- Groq
+- OpenAI
+- Gemini
+- Anthropic
+
+(Provider-agnostic architecture)
+
+## Orchestration
+
+- LangChain
+
+## Data Generation
+
+- Faker
+
+## Monitoring
+
+- Custom Metrics Dashboard
+
+---
+
+# System Architecture
+
+```text
 User Question
       │
       ▼
-┌───────────────────────────────────────────────────────────────┐
-│  Intent Classifier  (Groq LLaMA-3.3-70B + Pydantic output)   │
-│  → topic | region | SKU | category | confidence               │
-└────────────────────────┬──────────────────────────────────────┘
-                         │  confidence ≥ 0.70
-                         ▼
-┌───────────────────────────────────────────────────────────────┐
-│  Query Grounding Agent  (ChromaDB RAG)                        │
-│  → resolves ambiguous terms to metric definitions             │
-│  → retrieves few-shot SQL examples                            │
-└────────────────────────┬──────────────────────────────────────┘
-                         │
-                         ▼
-┌───────────────────────────────────────────────────────────────┐
-│  SQL Generation Agent  (Groq LLaMA-3.3-70B)                  │
-│  → generates DuckDB SQL from GroundedIntent                   │
-│  → constrained to whitelisted semantic-layer views            │
-└────────────────────────┬──────────────────────────────────────┘
-                         │
-                         ▼
-┌───────────────────────────────────────────────────────────────┐
-│  SQL Validation Agent  (DuckDB EXPLAIN + COUNT estimation)    │
-│  → syntax check → row-count bounds check                      │
-│  → regeneration signal if invalid (max 2 retries)             │
-└────────────────────────┬──────────────────────────────────────┘
-                         │  valid SQL
-                         ▼
-┌───────────────────────────────────────────────────────────────┐
-│  Execution & Aggregation Agent  (DuckDB + RollupCache)        │
-│  → cache-first query execution                                │
-│  → computes delta and % change automatically                  │
-└────────────────────────┬──────────────────────────────────────┘
-                         │
-                         ▼
-┌───────────────────────────────────────────────────────────────┐
-│  Response Synthesis Agent                                     │
-│  → answer text | delta | pct_change | table | explanation     │
-│  → coverage flag (complete / partial)                         │
-└────────────────────────┬──────────────────────────────────────┘
-                         │
-                         ▼
-┌───────────────────────────────────────────────────────────────┐
-│  Orchestrator  (Phase 9)                                      │
-│  → wires all agents | session memory | metrics logging        │
-│  → fallback responses on any failure                          │
-└────────────────────────┬──────────────────────────────────────┘
-                         │
-              ┌──────────┴──────────┐
-              ▼                     ▼
-   ┌──────────────────┐   ┌──────────────────────┐
-   │  Streamlit UI    │   │  Metrics Dashboard   │
-   │  (Phase 10)      │   │  (Phase 11)          │
-   └──────────────────┘   └──────────────────────┘
+
+┌───────────────────────────────────────────────┐
+│ Conversation Router                           │
+│ Greeting | Help | Follow-up | Analytics       │
+└──────────────────────┬────────────────────────┘
+                       │
+                       ▼
+
+┌───────────────────────────────────────────────┐
+│ Intent Classification Agent                   │
+│ Topic Detection + Entity Extraction           │
+└──────────────────────┬────────────────────────┘
+                       │
+                       ▼
+
+┌───────────────────────────────────────────────┐
+│ Query Grounding Agent                         │
+│ RAG + Business Definitions                    │
+└──────────────────────┬────────────────────────┘
+                       │
+                       ▼
+
+┌───────────────────────────────────────────────┐
+│ SQL Generation Agent                          │
+│ Natural Language → SQL                        │
+└──────────────────────┬────────────────────────┘
+                       │
+                       ▼
+
+┌───────────────────────────────────────────────┐
+│ SQL Validation Agent                          │
+│ Syntax Validation + Safety Checks             │
+└──────────────────────┬────────────────────────┘
+                       │
+                       ▼
+
+┌───────────────────────────────────────────────┐
+│ Execution & Aggregation Agent                 │
+│ DuckDB + Query Cache                          │
+└──────────────────────┬────────────────────────┘
+                       │
+                       ▼
+
+┌───────────────────────────────────────────────┐
+│ Response Synthesis Agent                      │
+│ Business Insights + Explanations              │
+└──────────────────────┬────────────────────────┘
+                       │
+                       ▼
+
+┌───────────────────────────────────────────────┐
+│ Orchestrator                                  │
+│ Session Memory + Monitoring + Retry Logic     │
+└──────────────────────┬────────────────────────┘
+                       │
+           ┌───────────┴───────────┐
+           ▼                       ▼
+
+     Streamlit UI         Metrics Dashboard
 ```
 
 ---
 
-## Folder Structure
+# Multi-Agent Workflow
 
-```
-promoinsights AI/
-│
-├── agents/                         # AI agent modules
-│   ├── intent_classifier.py        # Phase 3 — Intent + entity extraction
-│   ├── query_grounding.py          # Phase 4 — ChromaDB RAG grounding
-│   ├── query_gen.py                # Phase 5 — Text-to-SQL generation
-│   ├── validator.py                # Phase 6 — SQL syntax + row-count validation
-│   ├── executor.py                 # Phase 7 — DuckDB execution + aggregation
-│   ├── synthesizer.py              # Phase 8 — Business response synthesis
-│   └── orchestrator.py             # Phase 9 — Multi-agent pipeline + session memory
-│
-├── app/                            # Streamlit applications
-│   ├── streamlit_app.py            # Phase 10 — Main chat interface
-│   └── metrics_dashboard.py        # Phase 11 — Monitoring dashboard
-│
-├── rag/                            # RAG components
-│   ├── glossary.json               # Phase 2 — Business metric definitions (8–10 terms)
-│   ├── few_shot_bank.json          # Phase 2 — Few-shot SQL examples per topic
-│   ├── build_index.py              # Phase 2 — ChromaDB index builder
-│   └── retriever.py                # Phase 2 — Vector retrieval layer
-│
-├── db/                             # Database layer
-│   ├── schema_catalog.py           # Phase 1 — DuckDB schema definitions
-│   ├── semantic_layer.sql          # Phase 1 — Business-facing views
-│   ├── cache.py                    # Phase 7 — Rollup cache (5 pre-computed rollups)
-│   └── warehouse.duckdb            # Auto-generated database file
-│
-├── data/                           # Data generation
-│   └── generate_data.py            # Phase 0 — Synthetic dataset generator (Faker)
-│
-├── logs/                           # Metrics and logging
-│   ├── metrics_logger.py           # Phase 11 — MetricsLogger + QueryMetrics model
-│   └── query_metrics.csv           # Auto-created — pipeline execution log
-│
-├── chroma_db/                      # ChromaDB vector store (auto-created)
-│
-├── tests/                          # All test suites
-│   ├── test_pipeline.py            # Phase 12 — End-to-end 10-question pipeline tests
-│   ├── test_orchestrator.py        # Phase 9  — Orchestrator integration tests
-│   ├── test_streamlit_app.py       # Phase 10 — Streamlit app unit tests
-│   ├── test_metrics_logger.py      # Phase 11 — MetricsLogger unit tests
-│   ├── test_metrics_dashboard.py   # Phase 11 — Dashboard logic unit tests
-│   ├── test_synthesizer.py         # Phase 8  — Response synthesis tests
-│   ├── test_executor.py            # Phase 7  — Execution agent tests
-│   ├── test_validator.py           # Phase 6  — SQL validation tests
-│   ├── test_query_gen.py           # Phase 5  — SQL generation tests
-│   ├── test_query_grounding.py     # Phase 4  — Grounding agent tests
-│   └── test_intent_classifier.py   # Phase 3  — Intent classification tests
-│
-├── config.py                       # Centralised settings (loaded from .env)
-├── run.py                          # Entry point script to launch the Streamlit application
-├── requirements.txt                # Python dependencies
-├── .env.example                    # Environment variable template
-├── NOTES.md                        # Interview talking points & design notes
-└── README.md                       # This file
+## 1. Conversation Router
+
+Determines whether the user message is:
+
+- Greeting
+- Help Request
+- Follow-Up Question
+- Analytics Query
+
+---
+
+## 2. Intent Classification Agent
+
+Identifies:
+
+- Question Type
+- Business Topic
+- Campaign
+- Region
+- Category
+- SKU
+- Time Window
+
+Example:
+
+```json
+{
+  "topic": "promotion",
+  "region": "South",
+  "campaign": "PROMO_001"
+}
 ```
 
 ---
 
-## Installation
+## 3. Query Grounding Agent
 
-### Prerequisites
+Uses ChromaDB RAG to resolve ambiguous business terms.
 
-- Python 3.10 or higher
-- A [Groq API key](https://console.groq.com) (free tier available)
+Examples:
 
-### Steps
+| User Term | Business Definition |
+|------------|-------------------|
+| effectiveness | uplift vs baseline |
+| reduction | negative week-over-week change |
+| impact | revenue improvement |
+| growth | percentage increase |
+
+---
+
+## 4. SQL Generation Agent
+
+Generates SQL using:
+
+- Intent
+- Grounded Business Definitions
+- Schema Catalog
+- Few-Shot Examples
+
+Only approved semantic-layer views are accessible.
+
+---
+
+## 5. SQL Validation Agent
+
+Validates:
+
+- SQL Syntax
+- Query Plan
+- Row Count Bounds
+- Semantic Layer Compliance
+
+Invalid SQL is automatically regenerated.
+
+---
+
+## 6. Execution Agent
+
+Executes validated SQL.
+
+Features:
+
+- Query Caching
+- Aggregation
+- Delta Computation
+- Percentage Change Calculation
+- Metadata Collection
+
+---
+
+## 7. Response Synthesis Agent
+
+Transforms raw query results into:
+
+- Direct Answer
+- Business Insight
+- Supporting Table
+- Explanation
+- Follow-Up Suggestions
+
+Example:
+
+```text
+PROMO_001 increased sales by 18.4%
+compared to the four-week baseline,
+generating an additional ₹125,000 in revenue.
+```
+
+---
+
+## 8. Orchestrator
+
+Coordinates the entire workflow.
+
+Responsibilities:
+
+- Session Management
+- Retry Handling
+- Context Memory
+- Error Recovery
+- Metrics Logging
+
+---
+
+# Semantic Layer
+
+The assistant never queries raw tables directly.
+
+Instead, it uses curated business views:
+
+```sql
+vw_weekly_sales
+vw_weekly_inventory
+vw_promo_calendar
+```
+
+Benefits:
+
+- Consistent metrics
+- Safe SQL generation
+- Simplified schema
+- Reduced hallucinations
+
+---
+
+# Example Questions
+
+## Promotion Analysis
+
+- Did PROMO_001 improve sales?
+- Which campaign performed best?
+- Compare the top two campaigns.
+- Which promotion generated the highest revenue?
+
+## Inventory Analysis
+
+- Did inventory reduce in West region?
+- Which SKU is most at risk?
+- Show inventory trends.
+
+## Regional Analysis
+
+- Compare North and South sales.
+- Which region generated the highest revenue?
+- Which region grew fastest?
+
+## Revenue Analysis
+
+- Highest revenue category
+- Lowest revenue category
+- Revenue trends
+- Revenue growth analysis
+
+## Executive Insights
+
+- Summarize business performance.
+- What trends do you see?
+- What stands out in the data?
+
+---
+
+# Project Structure
+
+```text
+PromoInsights-AI/
+
+├── agents/
+│   ├── intent_classifier.py
+│   ├── query_grounding.py
+│   ├── query_gen.py
+│   ├── validator.py
+│   ├── executor.py
+│   ├── synthesizer.py
+│   └── orchestrator.py
+│
+├── app/
+│   ├── streamlit_app.py
+│   └── metrics_dashboard.py
+│
+├── rag/
+│   ├── glossary.json
+│   ├── few_shot_bank.json
+│   ├── build_index.py
+│   └── retriever.py
+│
+├── db/
+│   ├── warehouse.duckdb
+│   ├── semantic_layer.sql
+│   ├── schema_catalog.py
+│   └── cache.py
+│
+├── data/
+│   └── generate_data.py
+│
+├── logs/
+│   └── metrics_logger.py
+│
+├── tests/
+│   └── test_pipeline.py
+│
+├── .env
+├── requirements.txt
+├── README.md
+└── run.py
+```
+
+---
+
+# Installation
+
+## Clone Repository
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/hemanthd4641/PromoInsights-AI.git
+
 cd PromoInsights-AI
+```
 
-# 2. Create and activate a virtual environment
+---
+
+## Create Virtual Environment
+
+```bash
 python -m venv venv
+```
 
-# Windows
+### Windows
+
+```bash
 venv\Scripts\activate
+```
 
-# macOS / Linux
+### Linux / Mac
+
+```bash
 source venv/bin/activate
+```
 
-# 3. Install dependencies
+---
+
+## Install Dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
 ---
 
-## Environment Setup
+# Environment Configuration
 
-Create a `.env` file in the project root:
+Create a `.env` file:
 
-```bash
-# .env
-GROQ_API_KEY=your_groq_api_key_here
+```env
+LLM_PROVIDER=groq
 
-# Optional overrides (defaults shown)
 MODEL_NAME=llama-3.3-70b-versatile
+
+GROQ_API_KEY=your_key_here
+
 DUCKDB_PATH=db/warehouse.duckdb
+
 CHROMA_PATH=chroma_db
+
 ROW_COUNT_MIN=1
+
 ROW_COUNT_MAX=500
+
 MAX_RETRIES=2
+
 LOG_LEVEL=INFO
 ```
 
-> **Note:** Never commit your `.env` file. It is already listed in `.gitignore`.
-
 ---
 
-## Running the System
+# Running the Project
 
-### Step 1 — Generate Synthetic Data
+## Step 1: Generate Demo Dataset
 
 ```bash
 python data/generate_data.py
 ```
 
-Creates `db/warehouse.duckdb` with 3 years of weekly synthetic retail data:
-- `sales_data` — 3,900+ rows (region × SKU × week)
-- `inventory_data` — 3,900+ rows
-- `promotion_data` — 50 promotions
+Creates:
 
-### Step 2 — Build the RAG Vector Index
+- Sales Data
+- Inventory Data
+- Promotion Data
+
+---
+
+## Step 2: Build Vector Index
 
 ```bash
 python rag/build_index.py
 ```
 
-Embeds the business metric glossary and few-shot examples into ChromaDB at `chroma_db/`.
+Builds:
 
-### Step 3 — Launch the Chat Application
+- Metric Glossary Index
+- Few-Shot SQL Index
+
+---
+
+## Step 3: Launch Application
 
 ```bash
 python run.py
 ```
-*(Alternatively, you can run `streamlit run app/streamlit_app.py` directly)*
 
-Opens at [http://localhost:8501](http://localhost:8501).
-
-### Try These Questions
-
-```
-Did PROMO_001 improve sales in South region?
-Compare North and South sales.
-Did inventory reduce in West region?
-Which category generated highest revenue?
-Which campaign performed best?
-```
-
----
-
-## Running Tests
+or
 
 ```bash
-# Run all tests
-pytest tests/ -v
-
-# Run specific test suites
-python tests/test_pipeline.py          # End-to-end (makes real LLM calls)
-python tests/test_metrics_logger.py    # Metrics logger (no LLM, fast)
-python tests/test_metrics_dashboard.py # Dashboard logic (no LLM, fast)
-python tests/test_orchestrator.py      # Orchestrator integration (makes LLM calls)
+streamlit run app/streamlit_app.py
 ```
 
-> **Note:** Tests that make real Groq API calls (`test_pipeline.py`, `test_orchestrator.py`) will take 2–5 minutes due to rate-limit delays between calls.
+Open:
+
+```text
+http://localhost:8501
+```
 
 ---
 
-## Monitoring Dashboard
+# Monitoring Dashboard
 
-After running several questions through the chat app, view the live metrics:
+Launch:
 
 ```bash
 streamlit run app/metrics_dashboard.py
 ```
 
-Opens at [http://localhost:8502](http://localhost:8502) (or whichever port Streamlit assigns).
+Tracks:
 
-**Dashboard shows:**
-| Metric | Description |
-|---|---|
-| SQL Generation Accuracy | % queries where a valid response was generated |
-| Validation Pass Rate | % queries where SQL passed all checks |
-| Average Latency | Mean DuckDB execution time (ms) |
-| Average Confidence | Mean intent classification score |
-| Cache Hit Rate | % queries served from rollup cache |
-| Latency trend | Line chart over time |
-| Validation breakdown | Pass vs Fail bar chart |
-| Confidence distribution | Histogram |
-| Retry counts | Bar chart |
-| Recent 20 queries | Full metadata table |
-
-You can also click **"Generate Sample Data"** in the dashboard sidebar to populate 15 synthetic records for instant visualisation.
+- Query Success Rate
+- SQL Validation Rate
+- Response Latency
+- Retry Count
+- Confidence Score
+- Cache Hit Rate
 
 ---
 
-## Fresh Clone Validation
+# Testing
 
-A new user should be able to complete the following steps with **no code changes**:
+Run all tests:
 
-```
-✅ 1. git clone https://github.com/hemanthd4641/PromoInsights-AI.git
-✅ 2. python -m venv venv && venv\Scripts\activate
-✅ 3. pip install -r requirements.txt
-✅ 4. Create .env with GROQ_API_KEY=<your_key>
-✅ 5. python data/generate_data.py
-✅ 6. python rag/build_index.py
-✅ 7. python run.py
-✅ 8. Ask: "Did PROMO_001 improve sales in South region?"
-✅ 9. Verify: answer text + delta + table + SQL shown
-✅ 10. streamlit run app/metrics_dashboard.py
-✅ 11. Verify: KPI cards populated from real query logs
+```bash
+pytest tests/ -v
 ```
 
----
+Includes:
 
-## Design Decisions
-
-| Decision | Rationale |
-|---|---|
-| **Separate grounding from generation** | Keeps metric definitions stable and auditable; SQL agent only focuses on query structure |
-| **View whitelist before execution** | Prevents raw table access and prompt injection via table names |
-| **Pydantic for all agent I/O** | Enforces type-safe, validated contracts between every agent |
-| **Never-crash guarantee** | All `Exception` handlers return a structured `SynthesizedResponse` — the UI never shows a Python traceback |
-| **DuckDB for analytics** | Zero infrastructure, in-process, OLAP-optimised — ideal for demo and prototype |
-| **CSV-backed metrics** | Zero infrastructure; instantly readable by pandas for the monitoring dashboard |
-| **Row-count bounds validation** | Prevents 0-row results (bad SQL) and > 500-row cartesian products (dangerous SQL) |
-| **Session memory as dict** | Simple, fast, sufficient for single-server Streamlit deployment |
+- Intent Classification Tests
+- Query Grounding Tests
+- SQL Generation Tests
+- Validation Tests
+- Orchestrator Tests
+- End-to-End Pipeline Tests
 
 ---
 
-## License
+# Future Enhancements
 
-MIT License — see [LICENSE](LICENSE) for details.
+- Real Database Integration
+- Snowflake Support
+- PostgreSQL Support
+- Azure OpenAI Support
+- Role-Based Access Control
+- Dashboard Export
+- Report Generation
+- Voice Analytics Interface
+- Multi-Tenant Support
 
 ---
 
-*Built as a demonstration of production-grade agentic AI engineering across 12 implementation phases.*
+# Why This Project Matters
+
+PromoInsights AI demonstrates how modern AI systems can move beyond simple chatbots and become reliable business copilots.
+
+By combining:
+
+- Multi-Agent AI
+- Retrieval-Augmented Generation
+- Text-to-SQL
+- Semantic Modeling
+- Validation Pipelines
+- Business Intelligence
+
+the project provides a practical example of production-oriented AI engineering for analytics workflows.
+
+---
+
+# License
+
+MIT License

@@ -35,9 +35,10 @@ ROW_COUNT_MAX: int = int(os.getenv("ROW_COUNT_MAX", 500))
 MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", 2))
 
 # ---------------------------------------------------------------------------
-# Logging
+# Logging / Debugging
 # ---------------------------------------------------------------------------
 LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+DEBUG_MODE: bool = os.getenv("DEBUG_MODE", "true").lower() in {"1", "true", "yes", "on"}
 
 # ---------------------------------------------------------------------------
 # API Keys (loaded from environment — never hardcoded)

@@ -15,6 +15,7 @@ Run:
 
 import sys
 import uuid
+from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -309,12 +310,64 @@ def test_payload_normalization_handles_dataframe_and_numpy_types() -> bool:
     return passed == total
 
 
+def test_handle_question_serializes_table_to_list() -> bool:
+    total = 0
+    passed = 0
+
+    print("\n[T7] Question Handler Serialization")
+    total += 1
+    ok = True
+
+    try:
+        from app.streamlit_app import handle_question
+
+        class DummyOrchestrator:
+            def handle(self, question: str, session_id: str):
+                return SynthesizedResponse(
+                    answer_text="Sales improved.",
+                    delta=10.0,
+                    pct_change=5.0,
+                    table=[{"region": "South", "revenue": 2000}],
+                    explanation="Trend analysis.",
+                    coverage_flag=CoverageFlag(
+                        is_partial=False,
+                        missing_weeks=[],
+                        missing_regions=[],
+                        message="Complete coverage.",
+                    ),
+                    sql_shown="SELECT 1",
+                )
+
+        fake_state = {
+            "chat_history": [],
+            "orchestrator": DummyOrchestrator(),
+            "session_id": "session-123",
+        }
+
+        with patch.dict("app.streamlit_app.st.session_state", fake_state, clear=True):
+            with patch("app.streamlit_app.st.spinner", return_value=nullcontext()):
+                handle_question("Did sales improve?")
+
+        assistant_entry = fake_state["chat_history"][1]
+        ok &= check("assistant entry stored", assistant_entry["role"] == "assistant")
+        ok &= check("table serialized to list", isinstance(assistant_entry["content"]["table"], list))
+        ok &= check("table rows preserved", assistant_entry["content"]["table"][0]["region"] == "South")
+    except Exception as exc:
+        ok = False
+        print(f"    {FAIL} Exception: {exc}")
+
+    if ok:
+        passed += 1
+
+    return passed == total
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
 
 def run_tests() -> None:
-    total = 6
+    total = 7
     passed = 0
     failed: list[str] = []
 
@@ -329,6 +382,7 @@ def run_tests() -> None:
         ("T4", test_reset_session),
         ("T5", test_response_model),
         ("T6", test_payload_normalization_handles_dataframe_and_numpy_types),
+        ("T7", test_handle_question_serializes_table_to_list),
     ]
 
     for name, fn in results:

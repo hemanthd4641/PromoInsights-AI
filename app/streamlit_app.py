@@ -28,6 +28,13 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from agents.orchestrator import PromotionAnalyticsOrchestrator
 from agents.synthesizer import SynthesizedResponse, coerce_to_synthesized_response
+import importlib
+import config as app_config
+
+DEBUG_MODE = getattr(app_config, "DEBUG_MODE", True)
+if not hasattr(app_config, "DEBUG_MODE"):
+    app_config = importlib.reload(app_config)
+    DEBUG_MODE = getattr(app_config, "DEBUG_MODE", True)
 
 # ---------------------------------------------------------------------------
 # Page Configuration
@@ -146,11 +153,9 @@ st.markdown(
 # Sample questions shown in sidebar and empty state
 # ---------------------------------------------------------------------------
 SAMPLE_QUESTIONS = [
-    "Did PROMO_001 improve sales in South region?",
-    "Compare North and South sales.",
-    "Did inventory reduce in West region?",
     "Which campaign performed best?",
     "Which category generated highest revenue?",
+    "Did PROMO_001 improve sales in South region?",
 ]
 
 # ---------------------------------------------------------------------------
@@ -194,6 +199,14 @@ def prepare_display_dataframe(table_payload: object) -> pd.DataFrame:
     else:
         frame = pd.DataFrame()
 
+    try:
+        if isinstance(frame, pd.DataFrame):
+            normalized = json.loads(frame.fillna("").astype(str).to_json(orient="records"))
+            assert isinstance(normalized, list)
+            frame = pd.DataFrame(normalized)
+    except Exception:
+        frame = pd.DataFrame()
+
     if frame.empty:
         return pd.DataFrame(columns=["message"])
 
@@ -222,8 +235,29 @@ def prepare_display_dataframe(table_payload: object) -> pd.DataFrame:
     return frame
 
 
+def _get_debug_info(response: object) -> dict:
+    """Return a safe debug-info payload for both current and legacy response objects."""
+    try:
+        raw_debug = getattr(response, "debug_info", None)
+        if isinstance(raw_debug, dict):
+            return raw_debug
+    except Exception:
+        raw_debug = None
+
+    try:
+        payload = response.model_dump()
+        if isinstance(payload, dict):
+            raw_debug = payload.get("debug_info", {})
+            if isinstance(raw_debug, dict):
+                return raw_debug
+    except Exception:
+        pass
+
+    return {}
+
+
 def render_response(response: SynthesizedResponse) -> None:
-    """Render a SynthesizedResponse in structured cards inside the chat bubble."""
+    """Render a SynthesizedResponse in a chat-friendly layout based on its response type."""
 
     # 1. Answer text —— prominent card
     st.markdown(
@@ -234,6 +268,22 @@ def render_response(response: SynthesizedResponse) -> None:
         """,
         unsafe_allow_html=True,
     )
+
+    response_type = getattr(response, "response_type", "analytics") or "analytics"
+
+    if response_type in {"chat", "help", "follow_up"}:
+        if response_type == "error":
+            st.info(f"🛠️ {response.explanation}")
+        if response_type == "follow_up" and response.suggestions:
+            st.markdown("**💡 Suggested follow-ups**")
+            for suggestion in response.suggestions:
+                st.markdown(f"- {suggestion}")
+        return
+
+    if response_type == "error":
+        st.error("⚠ I hit a snag while preparing that answer, but I can help you try again.")
+        st.info(f"🛠️ {response.explanation}")
+        return
 
     # 2. Metric cards — delta & pct_change
     col1, col2, col3 = st.columns([1, 1, 2])
@@ -277,22 +327,52 @@ def render_response(response: SynthesizedResponse) -> None:
     if response.table:
         st.markdown("**📋 Supporting Data**")
         table_payload = response.table
-        if isinstance(table_payload, pd.DataFrame):
-            table_payload = table_payload.where(pd.notnull(table_payload), None).to_dict(orient="records")
-        elif not isinstance(table_payload, list):
-            table_payload = []
-        df = prepare_display_dataframe(table_payload)
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        try:
+            if isinstance(table_payload, list) and table_payload:
+                preview_rows = []
+                for row in table_payload[:5]:
+                    if isinstance(row, dict):
+                        preview_rows.append({str(k): str(v) for k, v in row.items() if not isinstance(v, (dict, list, tuple, set))})
+                    else:
+                        preview_rows.append({"value": str(row)})
+                if preview_rows:
+                    st.text("Preview: " + json.dumps(preview_rows, default=str))
+                else:
+                    st.caption("No tabular data returned.")
+            else:
+                st.caption("No tabular data returned.")
+        except Exception as exc:
+            print("[UI DEBUG] render failure=", exc)
+            st.caption("Unable to render supporting data safely.")
     else:
         st.caption("No tabular data returned.")
 
     # 4. Explanation
     st.info(f"📝 {response.explanation}")
 
-    # 5. SQL expander
+    # 5. Suggested follow-ups
+    if response.suggestions:
+        st.markdown("**💡 Suggested follow-ups**")
+        for suggestion in response.suggestions:
+            st.markdown(f"- {suggestion}")
+
+    # 6. SQL expander
     if response.sql_shown:
         with st.expander("🔍 Show SQL", expanded=False):
             st.code(response.sql_shown, language="sql")
+
+    debug_info = _get_debug_info(response)
+    if DEBUG_MODE and debug_info:
+        with st.expander("🧪 Debug Trace", expanded=False):
+            st.json({
+                "route": debug_info.get("route"),
+                "intent": debug_info.get("intent"),
+                "grounded_metric": debug_info.get("grounded_metric"),
+                "generated_sql": debug_info.get("generated_sql"),
+                "dataframe_head": debug_info.get("dataframe_head"),
+                "template_used": debug_info.get("template_used"),
+                "response_object": debug_info.get("response_object"),
+            })
 
 
 # ---------------------------------------------------------------------------
@@ -313,8 +393,18 @@ def handle_question(question: str) -> None:
                 session_id=st.session_state.session_id,
             )
         # Store the full response object (serialised as dict) for re-rendering
+        response_payload = response.model_dump()
+        if "table" in response_payload:
+            table_payload = response_payload["table"]
+            if isinstance(table_payload, list):
+                table_df = pd.DataFrame(table_payload)
+            else:
+                table_df = pd.DataFrame()
+            table_data = json.loads(table_df.fillna("").astype(str).to_json(orient="records"))
+            assert isinstance(table_data, list)
+            response_payload["table"] = table_data
         st.session_state.chat_history.append(
-            {"role": "assistant", "content": response.model_dump()}
+            {"role": "assistant", "content": response_payload}
         )
     except Exception as exc:  # noqa: BLE001
         st.error(f"⚠ Unable to process your request. Please try again.\n\n`{exc}`")

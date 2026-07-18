@@ -271,3 +271,315 @@ timestamp,question,topic,classification_confidence,validation_passed,retry_count
 ",ranking,0.84,True,0,92.39,1,False,True
 2026-07-18T07:31:52.634896+00:00,"i asked for south ,north,west or east which perform better in sales?
 ",ranking,0.84,True,0,70.42,1,False,True
+2026-07-18T07:35:07.851760+00:00,hi,promotion,0.4,True,0,86.24,4,False,True
+2026-07-18T07:45:06.572325+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:45:08.373922+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T07:45:10.071323+00:00,Which campaign performed best?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:45:10.080196+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T07:45:11.900922+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T07:45:48.884693+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:45:50.646397+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T07:45:52.397724+00:00,Which campaign performed best?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:45:52.397724+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T07:45:54.142406+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T07:47:07.556712+00:00,Did PROMO_001 improve sales in South region?,promotion,0.82,True,1,26.9,1,False,True
+2026-07-18T07:47:27.523829+00:00,"hi
+",greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:48:20.430752+00:00,Which category generated highest revenue?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:48:24.272526+00:00,Which campaign performed best?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:48:32.850294+00:00,Did PROMO_001 improve sales in South region?,promotion,0.82,True,0,84.52,1,False,True
+2026-07-18T07:48:38.192461+00:00,Compare North and South sales.,ranking,0.84,True,0,9.83,185,True,True
+2026-07-18T07:48:42.615947+00:00,Did inventory reduce in West region?,ranking,0.84,True,0,103.31,132,False,True
+2026-07-18T07:48:46.338518+00:00,Which campaign performed best?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:48:50.212333+00:00,Which category generated highest revenue?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:50:03.437432+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:50:06.494948+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T07:50:08.157932+00:00,Which campaign performed best?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:50:08.161211+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T07:50:09.942345+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T07:53:06.328989+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:53:08.038608+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T07:53:09.937850+00:00,Which campaign performed best?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:53:09.937850+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T07:53:11.622332+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T07:54:55.516397+00:00,Did PROMO_001 improve sales in South region?,promotion,0.82,True,0,71.33,1,False,True
+2026-07-18T07:55:12.595520+00:00,Which campaign drove the strongest performance?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:55:29.304189+00:00,How did revenue change over time?,promotion,0.82,True,0,69.57,1,False,True
+2026-07-18T07:55:42.754362+00:00,Compare the top two campaigns.,ranking,0.84,True,0,66.34,5,False,True
+2026-07-18T07:55:52.852627+00:00,Compare North and South sales.,ranking,0.84,True,0,10.06,185,True,True
+2026-07-18T07:56:01.374390+00:00,Did inventory reduce in West region?,ranking,0.84,True,0,86.02,132,False,True
+2026-07-18T07:56:09.952671+00:00,Which campaign performed best?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:56:14.702688+00:00,Which category generated highest revenue?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:56:28.449700+00:00,lowest revenue,ranking,0.84,True,0,69.41,1,False,True
+2026-07-18T07:57:21.698056+00:00,what is the total revenue,ranking,0.84,True,0,63.89,1,False,True
+2026-07-18T07:57:44.232947+00:00,which region is best ,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:58:54.840166+00:00,Which campaign performed best?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:58:54.840166+00:00,Which category generated highest revenue?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T07:59:02.434229+00:00,lowest revenue,ranking,0.84,True,0,26.36,4,False,True
+2026-07-18T08:00:29.652794+00:00,Which campaign performed best?,ranking,0.84,True,0,91.92,1,False,True
+2026-07-18T08:00:30.015688+00:00,Which category generated highest revenue?,ranking,0.84,True,0,10.21,221,True,True
+2026-07-18T08:00:30.432786+00:00,lowest revenue,ranking,0.84,True,0,79.2,4,False,True
+2026-07-18T08:01:07.840637+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:01:08.848285+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T08:01:18.137787+00:00,Which campaign performed best?,ranking,0.84,True,0,20.46,1,False,True
+2026-07-18T08:01:18.138593+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:01:19.121776+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T08:01:20.352019+00:00,Which campaign performed best?,ranking,0.84,True,0,26.81,1,False,True
+2026-07-18T08:01:20.508032+00:00,Which category generated highest revenue?,ranking,0.84,True,0,4.03,221,True,True
+2026-07-18T08:02:09.356419+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:02:10.322500+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T08:02:18.204856+00:00,Which campaign performed best?,ranking,0.84,True,0,20.49,1,False,True
+2026-07-18T08:02:18.205742+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:02:19.167251+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T08:02:20.391812+00:00,Which campaign performed best?,ranking,0.84,True,0,23.74,1,False,True
+2026-07-18T08:02:20.546882+00:00,Which category generated highest revenue?,ranking,0.84,True,0,3.98,221,True,True
+2026-07-18T08:02:50.841289+00:00,Which campaign performed best?,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:03:42.410433+00:00,Which campaign performed best?,ranking,0.84,True,0,37.66,1,False,True
+2026-07-18T08:03:50.444332+00:00,Which category generated highest revenue?,ranking,0.84,True,0,8.25,221,True,True
+2026-07-18T08:03:58.953606+00:00,Did PROMO_001 improve sales in South region?,ranking,0.84,True,0,62.88,1,False,True
+2026-07-18T08:04:06.902073+00:00,Compare North and South sales.,ranking,0.84,True,0,8.16,185,True,True
+2026-07-18T08:04:35.045766+00:00,"Which campaign drove that result?
+",ranking,0.84,True,0,47.47,5,False,True
+2026-07-18T08:04:53.212231+00:00,"Compare the top two campaigns.
+",ranking,0.84,True,0,48.82,1,False,True
+2026-07-18T08:05:06.368519+00:00,"How did revenue change over time?
+",ranking,0.84,True,0,58.44,1,False,True
+2026-07-18T08:05:24.913027+00:00,"hi
+",greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:05:40.560386+00:00,"promotions
+",ranking,0.84,True,0,37.35,1,False,True
+2026-07-18T08:05:43.005218+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:05:45.406097+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T08:05:53.681512+00:00,Compare North and South sales.,promotion,0.82,True,0,7.02,185,True,True
+2026-07-18T08:05:55.192483+00:00,Which campaign performed best?,ranking,0.84,True,0,41.2,1,False,True
+2026-07-18T08:05:55.193478+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:05:57.268905+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T08:05:59.431163+00:00,Which campaign performed best?,ranking,0.84,True,0,29.46,1,False,True
+2026-07-18T08:05:59.549764+00:00,Which category generated highest revenue?,ranking,0.84,True,0,5.78,221,True,True
+2026-07-18T08:06:02.505189+00:00,Did PROMO_001 improve sales in South region?,promotion,0.82,True,0,73.12,1,False,True
+2026-07-18T08:06:13.006580+00:00,Did inventory reduce in West region?,promotion,0.82,True,0,55.58,132,False,True
+2026-07-18T08:06:22.535746+00:00,Which campaign performed best?,ranking,0.84,True,0,58.53,1,False,True
+2026-07-18T08:06:30.251043+00:00,Which category generated highest revenue?,ranking,0.84,True,0,5.31,221,True,True
+2026-07-18T08:06:50.083907+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:06:52.085744+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T08:07:02.017868+00:00,Which campaign performed best?,ranking,0.84,True,0,34.87,1,False,True
+2026-07-18T08:07:02.018865+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:07:04.271968+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T08:07:06.558160+00:00,Which campaign performed best?,ranking,0.84,True,0,34.36,1,False,True
+2026-07-18T08:07:06.654722+00:00,Which category generated highest revenue?,ranking,0.84,True,0,2.82,221,True,True
+2026-07-18T08:07:53.560992+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:07:54.622912+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T08:08:02.461784+00:00,Which campaign performed best?,ranking,0.84,True,0,22.8,1,False,True
+2026-07-18T08:08:02.462793+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:08:03.459892+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T08:08:04.594456+00:00,Which campaign performed best?,ranking,0.84,True,0,29.93,1,False,True
+2026-07-18T08:08:04.700854+00:00,Which category generated highest revenue?,ranking,0.84,True,0,4.84,221,True,True
+2026-07-18T08:11:44.345144+00:00,Did PROMO_001 improve sales?,promotion,0.82,True,0,20.62,1,False,True
+2026-07-18T08:11:45.654351+00:00,Did PROMO_001 improve sales?,promotion,0.82,True,0,26.37,1,False,True
+2026-07-18T08:11:54.708470+00:00,Did inventory reduce in West region?,inventory,0.82,True,1,37.0,132,False,True
+2026-07-18T08:11:56.061603+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,27.95,132,False,True
+2026-07-18T08:11:57.401646+00:00,Compare North and South sales,region_comparison,0.8,True,0,2.88,185,True,True
+2026-07-18T08:11:58.603629+00:00,Compare North and South sales,region_comparison,0.8,True,0,2.25,185,True,True
+2026-07-18T08:11:59.804657+00:00,Which category generated highest revenue?,ranking,0.84,True,0,2.41,221,True,True
+2026-07-18T08:12:01.012104+00:00,Which category generated highest revenue?,ranking,0.84,True,0,2.57,221,True,True
+2026-07-18T08:12:02.534894+00:00,How did revenue change over time?,trend_analysis,0.78,True,0,19.92,4,False,True
+2026-07-18T08:12:03.930614+00:00,How did revenue change over time?,trend_analysis,0.78,True,0,19.14,4,False,True
+2026-07-18T08:12:36.949941+00:00,Which campaign drove that result?,promotion,0.82,True,0,19.5,4,False,True
+2026-07-18T08:12:38.200097+00:00,Which campaign drove that result?,promotion,0.82,True,0,29.8,4,False,True
+2026-07-18T08:13:58.122715+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:13:59.141676+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T08:14:06.823123+00:00,Which campaign performed best?,ranking,0.84,True,0,20.88,1,False,True
+2026-07-18T08:14:06.824138+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:14:07.909890+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T08:14:09.284751+00:00,Which campaign performed best?,ranking,0.84,True,0,21.19,1,False,True
+2026-07-18T08:14:09.431251+00:00,Which category generated highest revenue?,ranking,0.84,True,0,2.02,221,True,True
+2026-07-18T08:14:12.340950+00:00,Did PROMO_001 improve sales?,promotion,0.82,True,0,18.5,1,False,True
+2026-07-18T08:14:12.496701+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,29.63,132,False,True
+2026-07-18T08:14:12.650851+00:00,How did revenue change over time?,trend_analysis,0.78,True,0,22.86,4,False,True
+2026-07-18T08:14:12.784671+00:00,Which category generated highest revenue?,ranking,0.84,True,0,2.27,221,True,True
+2026-07-18T08:14:14.012812+00:00,Compare North and South sales,region_comparison,0.8,True,0,2.87,185,True,True
+2026-07-18T08:14:14.014066+00:00,Which campaign drove that result?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:15:59.175579+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:16:00.133331+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T08:16:07.963113+00:00,Which campaign performed best?,ranking,0.84,True,0,21.34,1,False,True
+2026-07-18T08:16:07.963763+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:16:08.911747+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T08:16:10.148236+00:00,Which campaign performed best?,ranking,0.84,True,0,25.72,1,False,True
+2026-07-18T08:16:10.334756+00:00,Which category generated highest revenue?,ranking,0.84,True,0,3.25,221,True,True
+2026-07-18T08:16:13.205432+00:00,Did PROMO_001 improve sales?,promotion,0.82,True,0,19.22,1,False,True
+2026-07-18T08:16:13.360323+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,27.48,132,False,True
+2026-07-18T08:16:13.502274+00:00,How did revenue change over time?,trend_analysis,0.78,True,0,21.38,4,False,True
+2026-07-18T08:16:13.651751+00:00,Which category generated highest revenue?,ranking,0.84,True,0,2.02,221,True,True
+2026-07-18T08:16:14.844709+00:00,Compare North and South sales,region_comparison,0.8,True,0,1.86,185,True,True
+2026-07-18T08:16:14.845709+00:00,Which campaign drove that result?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:17:06.056538+00:00,Did PROMO_001 improve sales in South region?,promotion,0.82,True,0,43.79,1,False,True
+2026-07-18T08:17:19.670840+00:00,Compare North and South sales.,promotion,0.82,True,0,8.47,185,True,True
+2026-07-18T08:17:24.363176+00:00,Did inventory reduce in West region?,promotion,0.82,True,0,67.86,132,False,True
+2026-07-18T08:17:27.953731+00:00,Which campaign performed best?,ranking,0.84,True,0,34.11,1,False,True
+2026-07-18T08:17:34.588035+00:00,Which category generated highest revenue?,ranking,0.84,True,0,8.16,221,True,True
+2026-07-18T08:17:39.057114+00:00,Compare North and South sales.,ranking,0.84,True,0,4.79,185,True,True
+2026-07-18T08:17:43.625374+00:00,Did inventory reduce in West region?,ranking,0.84,True,0,44.09,132,False,True
+2026-07-18T08:17:51.021855+00:00,Which campaign performed best?,ranking,0.84,True,0,48.0,1,False,True
+2026-07-18T08:18:06.251487+00:00,"How did revenue change over time?
+",ranking,0.84,True,0,48.69,1,False,True
+2026-07-18T08:18:20.707404+00:00,Compare North and South sales.,region_comparison,0.8,True,0,7.4,185,True,True
+2026-07-18T08:18:28.420794+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,61.86,132,False,True
+2026-07-18T08:18:32.179620+00:00,Compare North and South sales.,inventory,0.82,True,0,5.52,185,True,True
+2026-07-18T08:18:35.104508+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,34.12,132,False,True
+2026-07-18T08:22:45.417674+00:00,Did PROMO_001 improve sales in South region?,promotion,0.82,True,0,41.55,1,False,True
+2026-07-18T08:22:50.857695+00:00,Compare North and South sales.,promotion,0.82,True,0,8.02,185,True,True
+2026-07-18T08:22:55.280469+00:00,Compare North and South sales.,promotion,0.82,True,0,8.48,185,True,True
+2026-07-18T08:23:08.164122+00:00,Did inventory reduce in West region?,promotion,0.82,True,0,60.81,132,False,True
+2026-07-18T08:23:15.094443+00:00,Did inventory reduce in West region?,promotion,0.82,True,0,61.57,132,False,True
+2026-07-18T08:23:19.803926+00:00,Which campaign performed best?,ranking,0.84,True,0,61.24,1,False,True
+2026-07-18T08:23:25.341946+00:00,Which category generated highest revenue?,ranking,0.84,True,0,6.54,221,True,True
+2026-07-18T08:23:38.736845+00:00,Compare North and South sales.,ranking,0.84,True,0,8.39,185,True,True
+2026-07-18T08:25:10.750806+00:00,Compare North and South sales.,region_comparison,0.8,True,0,10.21,185,True,True
+2026-07-18T08:25:22.828884+00:00,Did PROMO_001 improve sales in South region?,promotion,0.82,True,0,45.67,1,False,True
+2026-07-18T08:25:30.715283+00:00,Did inventory reduce in West region?,promotion,0.82,True,0,69.24,132,False,True
+2026-07-18T08:25:34.522902+00:00,Which campaign performed best?,ranking,0.84,True,0,47.88,1,False,True
+2026-07-18T08:25:39.779091+00:00,Which category generated highest revenue?,ranking,0.84,True,0,9.58,221,True,True
+2026-07-18T08:25:51.359039+00:00,Compare North and South sales.,region_comparison,0.8,True,0,7.94,185,True,True
+2026-07-18T08:29:07.130742+00:00,Compare North and South sales.,unknown,0.0,False,0,8030.72,0,False,False
+2026-07-18T08:29:25.942288+00:00,Did PROMO_001 improve sales in South region?,unknown,0.0,False,0,272.47,0,False,False
+2026-07-18T08:29:29.357511+00:00,Compare North and South sales.,unknown,0.0,False,0,191.89,0,False,False
+2026-07-18T08:29:33.770612+00:00,Did inventory reduce in West region?,unknown,0.0,False,0,231.31,0,False,False
+2026-07-18T08:29:35.311298+00:00,Which campaign performed best?,unknown,0.0,False,0,219.3,0,False,False
+2026-07-18T08:29:40.756765+00:00,Which campaign performed best?,unknown,0.0,False,0,461.13,0,False,False
+2026-07-18T08:29:42.326001+00:00,Which category generated highest revenue?,unknown,0.0,False,0,187.55,0,False,False
+2026-07-18T08:36:32.718729+00:00,Compare North and South sales.,region_comparison,0.8,True,0,7.9,185,True,True
+2026-07-18T08:36:40.271330+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,64.73,132,False,True
+2026-07-18T08:36:43.879135+00:00,Which campaign performed best?,ranking,0.84,True,0,37.67,1,False,True
+2026-07-18T08:36:49.475983+00:00,Which category generated highest revenue?,ranking,0.84,True,0,8.21,221,True,True
+2026-07-18T08:36:54.264082+00:00,Did PROMO_001 improve sales in South region?,ranking,0.84,True,0,30.15,1,False,True
+2026-07-18T08:37:02.017240+00:00,Did inventory reduce in West region?,ranking,0.84,True,0,78.88,132,False,True
+2026-07-18T08:37:30.179699+00:00,Which category generated highest revenue?,ranking,0.84,True,0,7.3,221,True,True
+2026-07-18T08:37:33.452600+00:00,Compare North and South sales.,ranking,0.84,True,0,4.09,185,True,True
+2026-07-18T08:37:36.707326+00:00,Did inventory reduce in West region?,ranking,0.84,True,0,38.03,132,False,True
+2026-07-18T08:37:50.223678+00:00,"lowest revenue
+",ranking,0.84,True,0,49.83,1,False,True
+2026-07-18T08:38:11.362017+00:00,"highest revenue
+",greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:43:09.310164+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:43:10.256402+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T08:43:17.818359+00:00,Which campaign performed best?,ranking,0.84,True,0,26.18,1,False,True
+2026-07-18T08:43:17.819360+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:43:18.794986+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T08:43:19.840325+00:00,Which campaign performed best?,ranking,0.84,True,0,23.66,1,False,True
+2026-07-18T08:43:19.911117+00:00,Which category generated highest revenue?,ranking,0.84,True,0,2.24,221,True,True
+2026-07-18T08:43:22.765358+00:00,Did PROMO_001 improve sales?,promotion,0.82,True,0,20.94,1,False,True
+2026-07-18T08:43:22.860444+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,26.3,132,False,True
+2026-07-18T08:43:22.937250+00:00,How did revenue change over time?,trend_analysis,0.78,True,0,19.83,4,False,True
+2026-07-18T08:43:23.004146+00:00,Which category generated highest revenue?,ranking,0.84,True,0,2.92,221,True,True
+2026-07-18T08:43:24.071269+00:00,Compare North and South sales,region_comparison,0.8,True,0,2.35,185,True,True
+2026-07-18T08:43:24.072269+00:00,Which campaign drove that result?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:44:33.951974+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:44:35.004026+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T08:44:42.475452+00:00,Which campaign performed best?,ranking,0.84,True,0,23.95,1,False,True
+2026-07-18T08:44:42.475452+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:44:43.473547+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T08:44:44.530230+00:00,Which campaign performed best?,ranking,0.84,True,0,24.39,1,False,True
+2026-07-18T08:44:44.598226+00:00,Which category generated highest revenue?,ranking,0.84,True,0,1.83,221,True,True
+2026-07-18T08:44:47.493975+00:00,Did PROMO_001 improve sales?,promotion,0.82,True,0,20.35,1,False,True
+2026-07-18T08:44:47.601242+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,36.53,132,False,True
+2026-07-18T08:44:47.684425+00:00,How did revenue change over time?,trend_analysis,0.78,True,0,21.64,52,False,True
+2026-07-18T08:44:47.757850+00:00,Which category generated highest revenue?,ranking,0.84,True,0,3.23,221,True,True
+2026-07-18T08:44:48.827584+00:00,Compare North and South sales,region_comparison,0.8,True,0,1.84,185,True,True
+2026-07-18T08:44:48.828586+00:00,Which campaign drove that result?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:45:48.353098+00:00,Did PROMO_001 improve sales?,promotion,0.82,True,1,18.83,1,False,True
+2026-07-18T08:45:48.509511+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,26.54,132,False,True
+2026-07-18T08:45:48.660289+00:00,How did revenue change over time?,trend_analysis,0.78,True,0,21.03,52,False,True
+2026-07-18T08:45:48.808867+00:00,Which category generated highest revenue?,ranking,0.84,True,0,2.37,221,True,True
+2026-07-18T08:46:10.095647+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:46:11.066725+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T08:46:18.859247+00:00,Which campaign performed best?,ranking,0.84,True,0,22.49,1,False,True
+2026-07-18T08:46:18.860247+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:46:19.864496+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T08:46:20.909435+00:00,Which campaign performed best?,ranking,0.84,True,0,22.17,1,False,True
+2026-07-18T08:46:20.981374+00:00,Which category generated highest revenue?,ranking,0.84,True,0,2.98,221,True,True
+2026-07-18T08:46:23.760841+00:00,Did PROMO_001 improve sales?,promotion,0.82,True,0,22.59,1,False,True
+2026-07-18T08:46:23.856124+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,30.0,132,False,True
+2026-07-18T08:46:23.941114+00:00,How did revenue change over time?,trend_analysis,0.78,True,0,20.74,52,False,True
+2026-07-18T08:46:24.016466+00:00,Which category generated highest revenue?,ranking,0.84,True,0,1.68,221,True,True
+2026-07-18T08:46:25.162601+00:00,Compare North and South sales,region_comparison,0.8,True,0,2.24,185,True,True
+2026-07-18T08:46:25.163601+00:00,Which campaign drove that result?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:47:29.733389+00:00,Compare North and South sales.,region_comparison,0.8,True,0,6.13,185,True,True
+2026-07-18T08:47:37.161649+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,34.35,132,False,True
+2026-07-18T08:47:42.492532+00:00,Which campaign performed best?,ranking,0.84,True,0,37.69,1,False,True
+2026-07-18T08:47:53.885785+00:00,Which category generated highest revenue?,ranking,0.84,True,0,4.4,221,True,True
+2026-07-18T08:47:57.427864+00:00,Did PROMO_001 improve sales in South region?,ranking,0.84,True,0,43.12,1,False,True
+2026-07-18T08:48:00.516049+00:00,Compare North and South sales.,ranking,0.84,True,0,3.37,185,True,True
+2026-07-18T08:48:03.625355+00:00,Did inventory reduce in West region?,ranking,0.84,True,0,38.12,132,False,True
+2026-07-18T08:48:11.026398+00:00,Which campaign performed best?,ranking,0.84,True,0,56.37,1,False,True
+2026-07-18T08:48:14.080862+00:00,Which category generated highest revenue?,ranking,0.84,True,0,6.19,221,True,True
+2026-07-18T08:52:11.933074+00:00,hi there,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T08:52:12.917573+00:00,what can you do,help,1.0,True,0,0.0,0,False,True
+2026-07-18T08:52:20.748888+00:00,Which campaign performed best?,ranking,0.84,True,0,22.69,1,False,True
+2026-07-18T08:52:20.749887+00:00,Why?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:52:21.911421+00:00,What trends do you see?,general_chat,1.0,True,0,0.0,0,False,True
+2026-07-18T08:52:23.192174+00:00,Which campaign performed best?,ranking,0.84,True,0,22.2,1,False,True
+2026-07-18T08:52:23.337602+00:00,Which category generated highest revenue?,ranking,0.84,True,0,9.47,221,True,True
+2026-07-18T08:52:27.025542+00:00,Did PROMO_001 improve sales?,promotion,0.82,True,0,34.36,1,False,True
+2026-07-18T08:52:27.278239+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,46.98,132,False,True
+2026-07-18T08:52:27.583370+00:00,How did revenue change over time?,trend_analysis,0.78,True,0,31.17,52,False,True
+2026-07-18T08:52:27.860530+00:00,Which category generated highest revenue?,ranking,0.84,True,0,5.15,221,True,True
+2026-07-18T08:52:30.248561+00:00,Compare North and South sales.,region_comparison,0.8,True,0,4.83,185,True,True
+2026-07-18T08:52:32.806100+00:00,Compare North and South sales,region_comparison,0.8,True,0,5.71,185,True,True
+2026-07-18T08:52:32.806100+00:00,Which campaign drove that result?,follow_up,1.0,True,0,0.0,0,False,True
+2026-07-18T08:54:23.944216+00:00,Compare North and South sales.,region_comparison,0.8,True,0,7.43,185,True,True
+2026-07-18T08:55:02.768472+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,74.41,132,False,True
+2026-07-18T08:57:26.294815+00:00,Did PROMO_001 improve sales in South region?,promotion,0.82,True,0,46.79,1,False,True
+2026-07-18T08:57:29.929675+00:00,Compare North and South sales.,promotion,0.82,True,0,3.4,185,True,True
+2026-07-18T08:57:32.897685+00:00,Did inventory reduce in West region?,promotion,0.82,True,0,38.38,132,False,True
+2026-07-18T08:57:36.789854+00:00,Which campaign performed best?,ranking,0.84,True,0,34.86,1,False,True
+2026-07-18T08:57:39.646614+00:00,Which category generated highest revenue?,ranking,0.84,True,0,2.56,221,True,True
+2026-07-18T08:58:01.525038+00:00,Compare North and South sales.,region_comparison,0.8,True,0,8.12,185,True,True
+2026-07-18T08:58:04.179470+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,37.02,132,False,True
+2026-07-18T08:58:06.870115+00:00,Which campaign performed best?,ranking,0.84,True,0,27.35,1,False,True
+2026-07-18T08:58:09.874402+00:00,Which category generated highest revenue?,ranking,0.84,True,0,3.38,221,True,True
+2026-07-18T08:58:13.263014+00:00,Did PROMO_001 improve sales in South region?,ranking,0.84,True,0,55.87,1,False,True
+2026-07-18T08:59:31.246750+00:00,How did revenue change over time?,ranking,0.84,True,0,2.73,20,True,True
+2026-07-18T09:02:18.700528+00:00,Compare North and South sales.,region_comparison,0.8,True,0,8.32,185,True,True
+2026-07-18T09:02:22.952174+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,37.04,132,False,True
+2026-07-18T09:02:30.076624+00:00,Which category generated highest revenue?,ranking,0.84,True,0,7.61,221,True,True
+2026-07-18T09:04:09.293630+00:00,Which campaign performed best?,ranking,0.84,True,0,73.93,1,False,True
+2026-07-18T09:04:13.736285+00:00,Which category generated highest revenue?,ranking,0.84,True,0,7.45,221,True,True
+2026-07-18T09:04:21.350271+00:00,Did PROMO_001 improve sales in South region?,ranking,0.84,True,0,43.26,1,False,True
+2026-07-18T09:04:31.111319+00:00,Which category generated highest revenue?,ranking,0.84,True,0,6.66,221,True,True
+2026-07-18T09:04:35.100549+00:00,Did PROMO_001 improve sales in South region?,ranking,0.84,True,0,46.25,1,False,True
+2026-07-18T09:04:38.296612+00:00,Which campaign performed best?,ranking,0.84,True,0,31.23,1,False,True
+2026-07-18T09:05:30.436357+00:00,Which campaign performed best?,ranking,0.84,True,0,49.02,1,False,True
+2026-07-18T09:05:34.039816+00:00,Which category generated highest revenue?,ranking,0.84,True,0,3.81,221,True,True
+2026-07-18T09:05:39.572125+00:00,Did PROMO_001 improve sales in South region?,ranking,0.84,True,0,41.06,1,False,True
+2026-07-18T09:05:42.231881+00:00,Which category generated highest revenue?,ranking,0.84,True,0,3.16,221,True,True
+2026-07-18T09:06:29.594624+00:00,Which campaign performed best?,ranking,0.84,True,0,26.15,1,False,True
+2026-07-18T09:06:35.735418+00:00,Which category generated highest revenue?,ranking,0.84,True,0,6.19,221,True,True
+2026-07-18T09:06:49.386876+00:00,Did PROMO_001 improve sales in South region?,ranking,0.84,True,0,28.92,1,False,True
+2026-07-18T09:07:17.296625+00:00,"Compare the top two campaigns.
+",ranking,0.84,True,0,27.98,5,False,True
+2026-07-18T09:10:59.979429+00:00,Which campaign performed best?,ranking,0.84,True,0,37.11,1,False,True
+2026-07-18T09:11:11.001481+00:00,Which category generated highest revenue?,ranking,0.84,True,0,8.7,221,True,True
+2026-07-18T09:11:17.464710+00:00,Did PROMO_001 improve sales in South region?,ranking,0.84,True,0,64.46,1,False,True
+2026-07-18T09:12:03.876558+00:00,Which campaign performed best?,ranking,0.84,True,0,53.71,1,False,True
+2026-07-18T09:13:05.548449+00:00,hi,greeting,1.0,True,0,0.0,0,False,True
+2026-07-18T09:14:37.873324+00:00,Which category generated highest revenue?,ranking,0.84,True,0,5.06,221,True,True
+2026-07-18T09:14:39.293691+00:00,Which category generated highest revenue?,ranking,0.84,True,0,8.31,221,True,True
+2026-07-18T09:14:39.681579+00:00,Which category generated highest revenue?,ranking,0.84,True,0,4.27,221,True,True
+2026-07-18T09:14:56.748717+00:00,Did PROMO_001 improve sales in South region?,ranking,0.84,True,0,42.2,1,False,True
+2026-07-18T09:15:04.514113+00:00,Which campaign performed best?,ranking,0.84,True,0,41.77,1,False,True
+2026-07-18T09:15:53.340580+00:00,"lowest revenue?
+",ranking,0.86,True,0,40.94,5,False,True
+2026-07-18T09:18:00.486402+00:00,"what is the highest revenue??
+",ranking,0.84,True,0,21.71,5,False,True
+2026-07-18T09:18:10.830540+00:00,Did PROMO_001 improve sales in South region?,promotion,0.82,True,0,37.5,1,False,True
+2026-07-18T09:18:10.951234+00:00,Which campaign performed best?,campaign_impact,0.84,True,0,30.7,1,False,True
+2026-07-18T09:18:11.051322+00:00,Which category generated highest revenue?,ranking,0.84,True,0,7.02,221,True,True
+2026-07-18T09:18:11.139588+00:00,Compare North and South sales.,region_comparison,0.82,True,0,2.77,185,True,True
+2026-07-18T09:18:11.274912+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,38.75,132,False,True
+2026-07-18T09:18:11.387669+00:00,How did unknown promotion PROMO_XYZ_UNKNOWN affect sales?,promotion,0.82,True,0,25.56,1,False,True
+2026-07-18T09:18:44.503232+00:00,Did PROMO_001 improve sales in South region?,promotion,0.82,True,0,29.21,1,False,True
+2026-07-18T09:18:44.619965+00:00,Which campaign performed best?,campaign_impact,0.84,True,0,27.21,1,False,True
+2026-07-18T09:18:44.712852+00:00,Which category generated highest revenue?,ranking,0.84,True,0,3.97,221,True,True
+2026-07-18T09:18:44.806183+00:00,Compare North and South sales.,region_comparison,0.82,True,0,2.68,185,True,True
+2026-07-18T09:18:44.933404+00:00,Did inventory reduce in West region?,inventory,0.82,True,0,31.96,132,False,True
+2026-07-18T09:18:45.039605+00:00,How did unknown promotion PROMO_XYZ_UNKNOWN affect sales?,promotion,0.82,True,0,26.87,1,False,True

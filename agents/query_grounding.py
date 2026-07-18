@@ -101,6 +101,7 @@ class GroundedIntent(BaseModel):
     region              : Geographic region extracted from the question.
     sku                 : SKU identifier extracted from the question.
     category            : Product category extracted from the question.
+    entity_type         : Explicit entity being ranked or compared (campaign, category, sku, region, inventory).
     time_window         : Time reference extracted from the question.
     confidence          : Classification confidence score [0.0, 1.0].
     metric_definition   : Resolved business metric name (never empty).
@@ -113,6 +114,7 @@ class GroundedIntent(BaseModel):
     region: Optional[str] = Field(default=None)
     sku: Optional[str] = Field(default=None)
     category: Optional[str] = Field(default=None)
+    entity_type: Optional[str] = Field(default=None)
     time_window: Optional[str] = Field(default=None)
     confidence: float = Field(ge=0.0, le=1.0)
 
@@ -201,12 +203,14 @@ class QueryGroundingAgent:
         baseline_formula = None
         comparison_window = None
 
+        entity_type = (intent.entity_type or "").lower()
+
         if topic == "promotion" or any(term in q for term in ["promo", "promotion", "improve", "improvement", "lift", "impact", "after", "baseline"]):
             metric_definition = "promotion_effectiveness"
             if "revenue" in q:
                 metric_definition = "promotion_revenue_effectiveness"
-            baseline_formula = "promo_period_metric - baseline_metric"
-            comparison_window = "promotion window compared with a pre-promotion baseline"
+            baseline_formula = "promo_period_metric - pre_promo_baseline_metric"
+            comparison_window = "promotion window compared with a 4-week pre-promotion baseline"
         elif topic == "inventory" or any(term in q for term in ["inventory", "stock", "reduction"]):
             metric_definition = "inventory_reduction"
             baseline_formula = "(stock_before - stock_after) / stock_before * 100"
@@ -216,9 +220,26 @@ class QueryGroundingAgent:
             baseline_formula = "SUM(revenue) GROUP BY region"
             comparison_window = "selected period across regions"
         elif topic == "ranking" or any(term in q for term in ["rank", "highest", "lowest", "best", "worst"]):
-            metric_definition = "ranked_performance"
-            baseline_formula = "ORDER BY metric DESC LIMIT 1"
-            comparison_window = "overall period"
+            if entity_type == "campaign":
+                metric_definition = "campaign_ranking"
+                baseline_formula = "SUM(revenue) GROUP BY promo_id ORDER BY metric DESC"
+                comparison_window = "campaign-level performance over the full period"
+            elif entity_type == "category":
+                metric_definition = "category_ranking"
+                baseline_formula = "SUM(revenue) GROUP BY category ORDER BY metric DESC"
+                comparison_window = "category-level performance over the full period"
+            elif entity_type == "sku":
+                metric_definition = "sku_ranking"
+                baseline_formula = "SUM(revenue) GROUP BY sku ORDER BY metric DESC"
+                comparison_window = "sku-level performance over the full period"
+            elif entity_type == "region":
+                metric_definition = "regional_ranking"
+                baseline_formula = "SUM(revenue) GROUP BY region ORDER BY metric DESC"
+                comparison_window = "regional performance over the full period"
+            else:
+                metric_definition = "ranked_performance"
+                baseline_formula = "ORDER BY metric DESC LIMIT 1"
+                comparison_window = "overall period"
         elif topic == "trend_analysis" or any(term in q for term in ["trend", "growth", "over time"]):
             metric_definition = "trend_analysis"
             baseline_formula = "current_value - prior_value"
@@ -322,6 +343,7 @@ class QueryGroundingAgent:
             region=intent.region,
             sku=intent.sku,
             category=intent.category,
+            entity_type=intent.entity_type,
             time_window=intent.time_window,
             confidence=intent.confidence,
             metric_definition=metric_definition,

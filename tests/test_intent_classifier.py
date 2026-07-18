@@ -84,6 +84,22 @@ TEST_CASES = [
         "expected_region": None,
         "expected_category": None,
     },
+    {
+        "id": 7,
+        "question": "Which category generated highest revenue?",
+        "expected_topic": "ranking",
+        "expected_region": None,
+        "expected_category": None,
+        "expected_entity_type": "category",
+    },
+    {
+        "id": 8,
+        "question": "Compare top two campaigns.",
+        "expected_topic": "ranking",
+        "expected_region": None,
+        "expected_category": None,
+        "expected_entity_type": "campaign",
+    },
 ]
 
 # ---------------------------------------------------------------------------
@@ -181,6 +197,13 @@ def run_tests() -> None:
                 checks_passed = False
         else:
             print(f"    {PASS} category: {intent.category!r} (not required)")
+
+        # 7. Entity type check (optional regression expectation)
+        if "expected_entity_type" in tc:
+            if not check("entity_type", getattr(intent, "entity_type", None), tc["expected_entity_type"], strict=True):
+                checks_passed = False
+        else:
+            print(f"    {PASS} entity_type: {getattr(intent, 'entity_type', None)!r} (not required)")
 
         # --- Result ----------------------------------------------------
         if checks_passed:
